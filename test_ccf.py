@@ -35,7 +35,7 @@ session_key=login_response.session_key
 init_capital=login_response.init_capital
 
 #返回为series，对应各股票
-def run_strategy(df):
+def run_strategy1(df):
     '''
     stock_candidate-> dataframe
     |stockid|long_short_flag|[OPTIONAL]something like rank |
@@ -44,8 +44,29 @@ def run_strategy(df):
     
     ddf=df[['day','stockid','close']].set_index(['day','stockid'])['close'].unstack()
     stocks=ddf.rolling(5).mean().iloc[-1,:]
-    max10=stocks.nlargest(10)
-    min10=stocks.nsmallest(10)
+    max10=stocks.nlargest(5)
+    min10=stocks.nsmallest(5)
+    
+    stock_candidate=stocks.copy()
+    stock_candidate[:]=0
+    stock_candidate[stocks.isin(max10)]=1
+    stock_candidate[stocks.isin(min10)]=-1
+    
+    #check=(len(max10)!=0)| (len(min10)!=0 )
+    #stock_candidate=stocks  if check else stock_candidate
+    return stock_candidate
+
+def run_strategy(df):
+    '''
+    stock_candidate-> dataframe
+    |stockid|long_short_flag|[OPTIONAL]something like rank |
+    '''
+    stock_candidate=pd.DataFrame()
+    
+    ddf=df[['day','stockid','close']].set_index(['day','stockid'])['close'].unstack()
+    stocks=ddf.rolling(5).std().iloc[-1,:]
+    max10=stocks.nsmallest(10)
+    min10=stocks.nlargest(10)
     
     stock_candidate=stocks.copy()
     stock_candidate[:]=0
@@ -74,8 +95,6 @@ def get_position(stock_candidate,prev_pos,prev_capital,data_now,comission):
     #df_now['stocks-1']=-df_now['stocks']*prev_capital/length
     if length!=0:
         temp=temp*prev_capital/length
-        
-    print(temp[temp!=0])
     temp=temp.apply(lambda x:int(x))
     
     target_pos=temp.to_list()
@@ -87,10 +106,10 @@ def get_position(stock_candidate,prev_pos,prev_capital,data_now,comission):
 i=0#控制seq
 count=0
 data_lst=[]
-period=2 #eg 每两天跑一次策略
+period=3 #eg 每两天跑一次策略
 comission=0
 
-while count<50:
+while True:
     time.sleep(0.5)
     question_response=question_stub.get_question(question_pb2.QuestionRequest(user_id=88,sequence=i))
     
@@ -100,8 +119,8 @@ while count<50:
         for this_stock in question_response.dailystk:
             data_now.append(this_stock.values) 
         data_lst.extend(data_now)
-
-        if count%2==0:
+        
+        if count%period==0:
             print('run strategy')
             #也可以考虑只取eg data_lst[-50:]
             df=pd.DataFrame(data_lst,columns=['day','stockid','open','high','low','close','volume'],dtype=int)    
