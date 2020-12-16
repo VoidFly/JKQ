@@ -34,6 +34,7 @@ def run_strategy(df):
     '''
     stock_candidate-> dataframe
     |stockid|long_short_flag|[OPTIONAL]something like rank |
+    shape(num_of_stocks,3)
     '''
     stock_candidate=pd.DataFrame()
     return stock_candidate
@@ -66,7 +67,7 @@ while count<5:
         if count%2==0:
             print('run strategy')
             #也可以考虑只取eg data_lst[-50:]
-            df=pd.DataFrame(data_lst,columns=['day','stockid','open','high','low','close','volume'],dtype=int)    
+            df=pd.DataFrame(data_lst,columns=['day','stockid','open','high','low','close','volume'],dtype=int)
             
             #跑一次策略，返回多空备选股
             stock_candidate=run_strategy(df)#candi for candicate
