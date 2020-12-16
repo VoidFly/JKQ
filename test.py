@@ -6,6 +6,10 @@ import contest_pb2
 import contest_pb2_grpc
 import question_pb2
 import question_pb2_grpc
+import time
+
+def update_question():
+    pass
 
 
 def run():
@@ -17,23 +21,30 @@ def run():
     
     login_response=contest_stub.login(contest_pb2.LoginRequest(user_id=88,user_pin='dDTSvdwk'))
     if not login_response.success:
-        print('login failed')
+        print('login failed:',login_response.reason)
         contest_channel.close()
         question_channel.close()
         return
-        #answer_response=contest_stub.submit_answer()
+
+    session_key=login_response.session_key
+    init_capital=login_response.init_capital
+
+
     i=0
-    question_response=question_stub.get_question(question_pb2.QuestionRequest(user_id=88,sequence=i))
-    print(question_response)
-    contest_channel.close()
-    question_channel.close()
+    while True:
+        time.sleep(1)
+        question_response=question_stub.get_question(question_pb2.QuestionRequest(user_id=88,sequence=i))
+        print(question_response)
+        contest_channel.close()
+        question_channel.close()
 
     return question_response
 
 logging.basicConfig()
 data=run()
 
-#%%
-if __name__ == '__main__':
-    logging.basicConfig()
-    run()
+
+# #%%
+# if __name__ == '__main__':
+#     logging.basicConfig()
+#     run()
