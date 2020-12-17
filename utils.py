@@ -7,18 +7,24 @@ def rolling_window(a, window):
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
 # 动量
-def get_mom(closes,p):
-    mom = 0
+def get_mom(closes,t):
+    mom = closes[-t:].mean(axis=0)
     return mom
 
 # 波动率
-
+def get_vol(closes,t):
+    vol = closes[-t:].std(axis=0)
+    return vol
 
 # 52周最高
-
+def get_52weekhigh(closes):
+    high=closes[-252:].max(axis=0)
+    return (closes[-1]-high)/high
 
 # 52周最低
-
+def get_52weeklow(closes):
+    low=closes[-252:].min(axis=0)
+    return (closes[-1]-low)/low
 
 # CCI Commodity Channel Index
 def get_cci(highs,lows,closes,p):
