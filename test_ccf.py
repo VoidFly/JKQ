@@ -15,6 +15,7 @@ from proto import contest_pb2
 from proto import contest_pb2_grpc
 from proto import question_pb2
 from proto import question_pb2_grpc
+import numpy as np
 import time
 
 
@@ -35,15 +36,15 @@ session_key=login_response.session_key
 init_capital=login_response.init_capital
 
 #返回为series，对应各股票
-def run_strategy1(df):
+def run_strategy(df):
     '''
     stock_candidate-> dataframe
     |stockid|long_short_flag|[OPTIONAL]something like rank |
     '''
     stock_candidate=pd.DataFrame()
-    
     ddf=df[['day','stockid','close']].set_index(['day','stockid'])['close'].unstack()
-    stocks=ddf.rolling(5).mean().iloc[-1,:]
+    ddf=ddf.rolling(2).apply(lambda x:np.log(x.iloc[0])/np.log(x.iloc[1])-1)
+    stocks=ddf.rolling(3).mean().iloc[-1,:]
     max10=stocks.nlargest(5)
     min10=stocks.nsmallest(5)
     
@@ -56,7 +57,7 @@ def run_strategy1(df):
     #stock_candidate=stocks  if check else stock_candidate
     return stock_candidate
 
-def run_strategy(df):
+def run_strategy2(df):
     '''
     stock_candidate-> dataframe
     |stockid|long_short_flag|[OPTIONAL]something like rank |
@@ -64,6 +65,7 @@ def run_strategy(df):
     stock_candidate=pd.DataFrame()
     
     ddf=df[['day','stockid','close']].set_index(['day','stockid'])['close'].unstack()
+    ddf=ddf.rolling(2).apply(lambda x:np.log(x.iloc[0])/np.log(x.iloc[1])-1)
     stocks=ddf.rolling(5).std().iloc[-1,:]
     max10=stocks.nsmallest(10)
     min10=stocks.nlargest(10)
