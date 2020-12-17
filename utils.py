@@ -1,6 +1,11 @@
 import talib 
 import numpy as np
 
+def rolling_window(a, window):
+    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
+    strides = a.strides + (a.strides[-1],)
+    return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+
 # 动量
 def get_mom(closes,p):
     mom = 0
@@ -32,10 +37,18 @@ def get_cci(highs,lows,closes,p):
 
 
 # KDJ (Stochastic)
-def get_KDJ():
+def get_kdj(highs,lows,closes,fkp=9,skp=3,sdp=3):
+    hh = np.max(rolling_window(highs.T,fkp),axis=2).T # highest high
+    ll = np.min(rolling_window(lows.T,fkp),axis=2).T # lowest low
+    rsv = 100 * (closes[-hh.shape[0]:] - ll) / (hh - ll)
+    K = np.mean(rolling_window(rsv.T,skp),axis=2).T
+    D = np.mean(rolling_window(K.T,sdp),axis=2).T[-1]
+    K = K[-1]
+    J = 3 * D - 2 * K
+    return K,D,J
 
 
-    
+
 # def get_factors(data):
 #     '''
 #     @params:
