@@ -123,6 +123,7 @@ def get_position(stock_candidate,prev_pos,prev_capital,data_now,comission):
     target_pos=temp.to_list()
     m=pd.Series(target_pos)
     print(m[m!=0])
+
     return target_pos
 
 
