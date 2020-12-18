@@ -48,9 +48,16 @@ def get_factors(data):
     
     max52=get_52weekhigh(c)
     min52=get_52weeklow(c)
-    
-    result=pd.DataFrame([mom, vol, max52, min52],
-                index=['mom', 'vol', 'max52', 'min52'],dtype=float).T
+    cci = get_cci(h,l,c)
+    K,D,J = get_kdj(h,l,c)
+    rsi = get_rsi(c)
+    trix = get_trix(c)
+    willr = get_willr(h,l,c)
+    macd = get_macd(c)
+    natr = get_natr(h,l,c)
+
+    result=pd.DataFrame([mom, vol, max52, min52, cci, K, D, J, rsi, trix, willr, macd, natr],
+                index=['mom', 'vol', 'max52', 'min52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr'],dtype=float).T
     result['day']=day
     result['stock']=stock
     result['close']=c[-1]
@@ -125,7 +132,7 @@ def get_position(weights,dailystk,prev_pos,
 i=0#控制seq
 count=0
 data_lst=[]
-period=3 #eg 每两天跑一次策略
+period=10 #eg 每两天跑一次策略
 comission=0#TODO
 max_exposure=0.1#大盘上涨，多头增加，大盘下跌，空头增加
 single_stock_position_limit=0.1#TODO
@@ -135,7 +142,7 @@ leverage=2#TODO
 factors=pd.DataFrame()
 
 while True:
-    time.sleep(0.5)
+    time.sleep(1)
     question_response=question_stub.get_question(question_pb2.QuestionRequest(user_id=88,sequence=i))
     print(question_response.sequence)
     if question_response.sequence!=-1:
@@ -152,7 +159,8 @@ while True:
             factors=factors.append(dailyfactor)  #向因子库追加
             
             #factor_select=select_factors(factors,n=10,period=period)  #计算相关系数选取因子
-            factor_select=['mom', 'vol', 'max52', 'min52']
+            # factor_select=['mom', 'vol', 'max52', 'min52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr']
+            factor_select=['mom', 'willr']
             index_direction='neutral'#TODO 大盘方向，用于控制exposure
             weights=get_weight(dailyfactor[factor_select+['stock']],
                             n=10,max_exposure=0.1,index_direction=index_direction)  #取出本期选出因子的因子值
