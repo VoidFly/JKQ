@@ -128,7 +128,7 @@ def get_willr(highs,lows,closes,p=14):
     return willr
 
 
-    def get_macd(closes,fp=12,sp=26):
+def get_macd(closes,fp=12,sp=26):
     w1 = np.asarray([np.power(((fp-1)/(fp+1)),fp-x-1) for x in range(fp)]) * 2 / (fp + 1)
     w2 = np.asarray([np.power(((sp-1)/(sp+1)),sp-x-1) for x in range(sp)]) * 2 / (sp + 1)
     ema1 = np.average(rolling_window(closes[-fp:].T,fp),axis=2,weights=w1)
