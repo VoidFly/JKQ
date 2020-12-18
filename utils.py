@@ -34,7 +34,7 @@ def get_52weeklow(closes):
 
 
 # CCI Commodity Channel Index
-def get_cci(highs,lows,closes,p):
+def get_cci(highs,lows,closes,p=14):
     '''
     Args:
         highs: 2D-array of high prices, time as row indexes and each stock for one column
@@ -81,7 +81,49 @@ def get_kdj(highs,lows,closes,fkp=9,skp=3,sdp=3):
     return K,D,J
 
 
+# RSI Relative Strength Index
+def get_rsi(closes,p=14):
+    '''
+    Args:
+        closes: 2D-array of close prices, time as row indexes and each stock for one column
+        p: time period
+    Return:
+        cci: Commodity Channel Index of all stocks as a 1D-array
+    '''
+    p = 14
+    pct = closes[-p:] / closes[-p-1:-1] - 1
+    up = pct 
+    up[up<0] = np.nan 
+    up = np.nanmean(up,axis=0)
+    down = pct 
+    down[down>0] = np.nan 
+    down = np.nanmean(down,axis=0)
+    rsi = 100 - (100 / (1 + up/down))
+    return rsi
 
+
+# TRIX - 1-day Rate-Of-Change (ROC) of a Triple Smooth EMA
+def get_trix(closes,p=14):
+    w = np.asarray([np.power(((p-1)/(p+1)),x+1) for x in range(p)])
+    w = np.asarray([np.power(((p-1)/(p+1)),p-x-1) for x in range(p)]) * 2 / (p + 1)
+    ema1 = np.average(rolling_window(closes[-3*p:].T,p),axis=2,weights=w)
+    ema2 = np.average(rolling_window(ema1,p),axis=2,weights=w)
+    ema3 = np.average(rolling_window(ema2,p),axis=2,weights=w).T
+    trix = 100 * (ema3[-1] / ema3[-2] - 1)
+    return trix
+
+
+def get_willr(highs,lows,closes,p=14):
+    '''
+    Args:
+        highs: 2D-array of high prices, time as row indexes and each stock for one column
+        lows: 2D-array of low prices, time as row indexes and each stock for one column
+        closes: 2D-array of close prices, time as row indexes and each stock for one column
+        p: time period
+    Return:
+        willr: Williams' %R of all stocks as a 1D-array
+    '''
+    
 # def get_factors(data):
 #     '''
 #     @params:
