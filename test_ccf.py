@@ -1,5 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Dec 16 23:13:42 2020
 
+@author: 轩尘
+"""
 #%%
+
 import logging
 import grpc
 import pandas as pd
@@ -11,6 +17,7 @@ from proto import question_pb2
 from proto import question_pb2_grpc
 import numpy as np
 import time
+
 
 contest_channel=grpc.insecure_channel('47.103.23.116: 56702')
 question_channel=grpc.insecure_channel('47.103.23.116: 56701')
@@ -29,23 +36,61 @@ session_key=login_response.session_key
 init_capital=login_response.init_capital
 
 #返回为series，对应各股票
-def run_strategy(df):
+def run_strategy2(df):
     '''
     stock_candidate-> dataframe
     |stockid|long_short_flag|[OPTIONAL]something like rank |
-    shape(num_of_stocks,3)
     '''
     stock_candidate=pd.DataFrame()
-    #unstack here
     ddf=df[['day','stockid','close']].set_index(['day','stockid'])['close'].unstack()
-
-
-
     ddf=(ddf-ddf.shift(1))/ddf.shift(1)
     stocks=ddf.rolling(3).mean().iloc[-1,:]
     max10=stocks.nlargest(10)
     min10=stocks.nsmallest(10)
-    h
+    
+    stock_candidate=stocks.copy()
+    stock_candidate[:]=0
+    stock_candidate[stocks.isin(max10)]=1
+    stock_candidate[stocks.isin(min10)]=-1
+    
+    #check=(len(max10)!=0)| (len(min10)!=0 )
+    #stock_candidate=stocks  if check else stock_candidate
+    return stock_candidate
+
+def run_strategy1(df):
+    '''
+    stock_candidate-> dataframe
+    |stockid|long_short_flag|[OPTIONAL]something like rank |
+    '''
+    stock_candidate=pd.DataFrame()
+    
+    ddf=df[['day','stockid','close']].set_index(['day','stockid'])['close'].unstack()
+    ddf=(ddf-ddf.shift(1))/ddf.shift(1)
+    stocks=ddf.rolling(10).std().iloc[-1,:]
+    max10=stocks.nsmallest(5)
+    min10=stocks.nlargest(5)
+    
+    stock_candidate=stocks.copy()
+    stock_candidate[:]=0
+    stock_candidate[stocks.isin(max10)]=1
+    stock_candidate[stocks.isin(min10)]=-1
+    
+    #check=(len(max10)!=0)| (len(min10)!=0 )
+    #stock_candidate=stocks  if check else stock_candidate
+    return stock_candidate
+
+def run_strategy(df):
+    '''
+    stock_candidate-> dataframe
+    |stockid|long_short_flag|[OPTIONAL]something like rank |
+    '''
+    stock_candidate=pd.DataFrame()
+    ddf=df[['day','stockid','close']].set_index(['day','stockid'])['close'].unstack()
+    ddf=(ddf-ddf.shift(1))/ddf.shift(1)
+    stocks=ddf.mean()
+    max10=stocks.nlargest(10)
+    min10=stocks.nsmallest(10)
+    
     stock_candidate=stocks.copy()
     stock_candidate[:]=0
     stock_candidate[stocks.isin(max10)]=1
@@ -78,6 +123,7 @@ def get_position(stock_candidate,prev_pos,prev_capital,data_now,comission):
     target_pos=temp.to_list()
     m=pd.Series(target_pos)
     print(m[m!=0])
+
     return target_pos
 
 
@@ -104,7 +150,7 @@ while True:
             df=pd.DataFrame(data_lst,columns=['day','stockid','open','high','low','close','volume'],dtype=int)    
             df_now=pd.DataFrame(data_now,columns=['day','stockid','open','high','low','close','volume'],dtype=int)
             #跑一次策略，返回多空备选股
-            stock_candidate=run_strategy(df)
+            stock_candidate=run_strategy(df)#candi for candicate
             
             #检查规则，返回持仓
             target_pos=get_position(stock_candidate,
@@ -115,10 +161,8 @@ while True:
 
             # summit answer
             submit_response = contest_stub.submit_answer(contest_pb2.AnswerRequest(user_id=88,user_pin='dDTSvdwk',session_key=login_response.session_key,sequence=i,positions=target_pos))
-
             print(submit_response,question_response.capital)
-            if not submit_response.accepted:
-                print(submit_response.reason)
+            
 
         i=question_response.sequence+1
         count+=1
