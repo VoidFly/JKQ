@@ -118,20 +118,20 @@ def get_position(weights,dailystk,prev_pos,
 
     target_pos=prev_capital*weights/close
     target_pos=target_pos.astype(int)
-
+    print(target_pos[target_pos!=0])
     return target_pos.tolist()
 
 #%%
 i=0#控制seq
 count=0
 data_lst=[]
-period=5 #eg 每两天跑一次策略
-comission=0
+period=3 #eg 每两天跑一次策略
+comission=0#TODO
 max_exposure=0.1#大盘上涨，多头增加，大盘下跌，空头增加
-single_stock_position_limit=0.1
-lending_rate=0.01
-borrow_rate=0.05
-leverage=2
+single_stock_position_limit=0.1#TODO
+lending_rate=0.01#TODO
+borrow_rate=0.05#TODO
+leverage=2#TODO
 factors=pd.DataFrame()
 
 while True:
@@ -142,7 +142,7 @@ while True:
         dailystk = [x.values for x in question_response.dailystk]
         data_lst.extend(dailystk)
 
-        if count%period==0 and count>10:#刚开始不动
+        if count%period==0 and count>5:#刚开始不动
             print('run strategy')
             df=pd.DataFrame(data_lst,columns=['day','stock','open','high','low','close','volume'],
                             dtype=float).set_index(['day','stock'])
@@ -151,8 +151,8 @@ while True:
 
             factors=factors.append(dailyfactor)  #向因子库追加
             
-            factor_select=select_factors(factors,n=10,period=period)  #计算相关系数选取因子
-
+            #factor_select=select_factors(factors,n=10,period=period)  #计算相关系数选取因子
+            factor_select=['mom', 'vol', 'max52', 'min52']
             index_direction='neutral'#TODO 大盘方向，用于控制exposure
             weights=get_weight(dailyfactor[factor_select+['stock']],
                             n=10,max_exposure=0.1,index_direction=index_direction)  #取出本期选出因子的因子值
