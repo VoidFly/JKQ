@@ -16,27 +16,28 @@ from utils import *
 
 #%%
 def get_factors(data):
-   o = data['open'].unstack()
-   stocks=o.columns.values
-   day=o.index[-1]
-   o=o.values
-   h = data['high'].unstack().values
-   l = data['low'].unstack().values
-   c = data['close'].unstack().values
-   v = data['volume'].unstack().values
+    '''1*stock'''
+    o = data['open'].unstack()
+    stocks=o.columns.values
+    day=o.index[-1]
+    o=o.values
+    h = data['high'].unstack().values
+    l = data['low'].unstack().values
+    c = data['close'].unstack().values
+    v = data['volume'].unstack().values
 
-   mom=get_mom(c,3)
-   vol=get_vol(c,3)
-   
-   max52=get_52weekhigh(c)
-   min52=get_52weeklow(c)
-   
-   result=pd.DataFrame([mom, vol, max52, min52],
-            index=['mom', 'vol', 'max52', 'min52'],dtype=float).T
-   result['day']=day
-   result['stocks']=stocks
-   result['close']=c[-1]
-   return result
+    mom=get_mom(c,3)
+    vol=get_vol(c,3)
+    
+    max52=get_52weekhigh(c)
+    min52=get_52weeklow(c)
+    
+    result=pd.DataFrame([mom, vol, max52, min52],
+                index=['mom', 'vol', 'max52', 'min52'],dtype=float).T
+    result['day']=day
+    result['stocks']=stocks
+    result['close']=c[-1]
+    return result # stocks|day|factors|close
 
 #选n个因子,返回因子名
 def select_factors(factors,n):
@@ -82,10 +83,11 @@ while sequence < 1000:
         df=pd.DataFrame(data_lst,columns=['day','stockid','open','high','low','close','volume'],dtype=float)
         
         dailyfactor=get_factors(df)  #从数据获取因子
-        factors.append(dailyfactor)  #向因子库追加
+        facotrs=factors.append(dailyfactor)  #向因子库追加
         
         factor_select=select_factors(factors,n)  #计算相关系数选取因子
         weight=get_weight(dailyfactor[factor_select+['stock']])  #取出本期选出因子的因子值
+
         #factors.append()
         # Here is our target array
         # pos = np.sign(np.random.rand(351) - 0.5) * np.floor(question_response.capital / 351 / ds[:,5])
