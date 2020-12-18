@@ -13,6 +13,7 @@ from proto import question_pb2_grpc
 import numpy as np
 import time
 from utils import *
+from functools import reduce
 
 contest_channel=grpc.insecure_channel('47.103.23.116: 56702')
 question_channel=grpc.insecure_channel('47.103.23.116: 56701')
@@ -78,18 +79,28 @@ def get_weight(factors,n=10,max_exposure=0.1,index_direction='neutral'):
     head=[]
     tail=[]
     
-    #简单取并集/或交集
+    #简单取并集
     for col in factors.columns:
         head.extend(factors[col].nlargest(n).index.tolist())
         tail.extend(factors[col].nsmallest(n).index.tolist())
     head=list(set(head))
     tail=list(set(tail))
-
+    #排除共有元素
     intersect=np.intersect1d(head,tail)
     head=np.setdiff1d(head,intersect)
     tail=np.setdiff1d(tail,intersect)
     #print('head num',len(head))
     #print('tail num',len(tail))
+
+    # #取交集 不行。。。
+    # for col in factors.columns:
+    #     head.append(factors[col].nlargest(n).index.tolist())
+    #     tail.append(factors[col].nsmallest(n).index.tolist())
+
+    # head=reduce(np.intersect1d,head)
+    # tail=reduce(np.intersect1d,tail)
+    # print('head num',len(head))
+    # print('tail num',len(tail))
 
     #根据大盘调整仓位占比
     weight=pd.Series(0,index=factors.index)
@@ -117,15 +128,25 @@ def get_position(weights,dailystk,prev_pos,
     close=dailystk.set_index(['stock'])['close']
 
     target_pos=prev_capital*weights/close
+
+    # ratio=0.7
+    # prev_pos=pd.Series(prev_pos,index=target_pos.index)
+    # target_pos=target_pos*(1-ratio)+prev_pos*ratio
+
     target_pos=target_pos.astype(int)
     print(target_pos[target_pos!=0])
     return target_pos.tolist()
+
+def get_weight2(factors,df):
+    ret=df['close'].unstack(level=1).pct_change(1).shift(-1)
+    pass
+
 
 #%%
 i=0#控制seq
 count=0
 data_lst=[]
-period=3 #eg 每两天跑一次策略
+period=2 #eg 每两天跑一次策略
 comission=0#TODO
 max_exposure=0.1#大盘上涨，多头增加，大盘下跌，空头增加
 single_stock_position_limit=0.1#TODO
@@ -135,7 +156,6 @@ leverage=2#TODO
 factors=pd.DataFrame()
 
 while True:
-    time.sleep(0.5)
     question_response=question_stub.get_question(question_pb2.QuestionRequest(user_id=88,sequence=i))
     print(question_response.sequence)
     if question_response.sequence!=-1:
@@ -146,7 +166,7 @@ while True:
             print('run strategy')
             df=pd.DataFrame(data_lst,columns=['day','stock','open','high','low','close','volume'],
                             dtype=float).set_index(['day','stock'])
-            
+        
             dailyfactor=get_factors(df)  #从数据获取因子
 
             factors=factors.append(dailyfactor)  #向因子库追加
@@ -169,9 +189,15 @@ while True:
             print(submit_response,question_response.capital)
             if not submit_response.accepted:
                 print(submit_response.reason)
-
+                if submit_response.reason[-7:] == 'timeout':
+                    i=question_response.sequence+1
+                    count+=1
+                    continue
         i=question_response.sequence+1
         count+=1
+    time.sleep(1)
+
+        
 
 contest_channel.close()
 question_channel.close()
