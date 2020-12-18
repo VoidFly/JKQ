@@ -40,36 +40,6 @@ init_capital=login_response.init_capital
 
 
 #%%
-# def get_factors(data):
-#     '''1*stock'''
-#     o = data['open'].unstack(level=1)
-#     stock=o.columns.values
-#     day=o.index[-1]
-#     o=o.values
-#     h = data['high'].unstack(level=1).values
-#     l = data['low'].unstack(level=1).values
-#     c = data['close'].unstack(level=1).values
-#     v = data['volume'].unstack(level=1).values
-#     avg = get_avg(c,3)
-#     mom=get_mom(c,3)
-#     vol=get_vol(c,3)
-    
-#     max52=get_52weekhigh(c)
-#     min52=get_52weeklow(c)
-#     cci = get_cci(h,l,c)
-#     K,D,J = get_kdj(h,l,c)
-#     rsi = get_rsi(c)
-#     trix = get_trix(c)
-#     willr = get_willr(h,l,c)
-#     macd = get_macd(c)
-#     natr = get_natr(h,l,c)
-
-#     result=pd.DataFrame([avg, mom, max52, cci, K, D, J, rsi, trix, willr],
-#                 index=['avg', 'mom', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr'],dtype=float).T
-#     result['day']=day
-#     result['stock']=stock
-#     result['close']=c[-1]
-#     return result # stocks|day|factors....|close
 def get_factors(data):
     '''1*stock'''
     o = data['open'].unstack(level=1)
@@ -80,7 +50,7 @@ def get_factors(data):
     l = data['low'].unstack(level=1).values
     c = data['close'].unstack(level=1).values
     v = data['volume'].unstack(level=1).values
-
+    avg = get_avg(c,3)
     mom=get_mom(c,3)
     vol=get_vol(c,3)
     
@@ -94,12 +64,42 @@ def get_factors(data):
     macd = get_macd(c)
     natr = get_natr(h,l,c)
 
-    result=pd.DataFrame([mom, vol, max52, min52, cci, K, D, J, rsi, trix, willr, macd, natr],
-                index=['mom', 'vol', 'max52', 'min52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr'],dtype=float).T
+    result=pd.DataFrame([avg, mom, max52, cci, K, D, J, rsi, trix, willr],
+                index=['avg', 'mom', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr'],dtype=float).T
     result['day']=day
     result['stock']=stock
     result['close']=c[-1]
     return result # stocks|day|factors....|close
+# def get_factors(data):
+#     '''1*stock'''
+#     o = data['open'].unstack(level=1)
+#     stock=o.columns.values
+#     day=o.index[-1]
+#     o=o.values
+#     h = data['high'].unstack(level=1).values
+#     l = data['low'].unstack(level=1).values
+#     c = data['close'].unstack(level=1).values
+#     v = data['volume'].unstack(level=1).values
+
+#     mom=get_mom(c,3)
+#     vol=get_vol(c,3)
+    
+#     max52=get_52weekhigh(c)
+#     min52=get_52weeklow(c)
+#     cci = get_cci(h,l,c)
+#     K,D,J = get_kdj(h,l,c)
+#     rsi = get_rsi(c)
+#     trix = get_trix(c)
+#     willr = get_willr(h,l,c)
+#     macd = get_macd(c)
+#     natr = get_natr(h,l,c)
+
+#     result=pd.DataFrame([mom, vol, max52, min52, cci, K, D, J, rsi, trix, willr, macd, natr],
+#                 index=['mom', 'vol', 'max52', 'min52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr'],dtype=float).T
+#     result['day']=day
+#     result['stock']=stock
+#     result['close']=c[-1]
+#     return result # stocks|day|factors....|close
 #选n个因子,返回因子名
 def select_factors(factors,n=10,period=5):
     factors=factors.set_index(['day','stock'])
@@ -219,7 +219,7 @@ leverage=2#TODO
 factors=pd.DataFrame()
 
 #%%
-model = load_model('my_dnn2.h5')
+model = load_model('dnn_overfit.h5')
 
 #%%
 while True:
@@ -240,8 +240,8 @@ while True:
             factors=factors.append(dailyfactor)  #向因子库追加
             
             #factor_select=select_factors(factors,n=10,period=period)  #计算相关系数选取因子
-            # factor_select=['avg', 'mom', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr']
-            factor_select=['mom', 'vol', 'max52', 'min52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr']
+            factor_select=['avg', 'mom', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr']
+            # factor_select=['mom', 'vol', 'max52', 'min52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr']
             index_direction='neutral'#TODO 大盘方向，用于控制exposure
             # weights=get_weight(dailyfactor[factor_select+['stock']],
                             # n=10,max_exposure=0.1,index_direction=index_direction)  #取出本期选出因子的因子值
