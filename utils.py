@@ -123,6 +123,11 @@ def get_willr(highs,lows,closes,p=14):
     Return:
         willr: Williams' %R of all stocks as a 1D-array
     '''
+    hh = np.max(rolling_window(highs.T,p),axis=2).T # highest high
+    ll = np.min(rolling_window(lows.T,p),axis=2).T # lowest low
+    willr = 100 * (hh[-1] - closes[-1]) / (hh[-1] - ll[-1])
+    return willr
+
     
 # def get_factors(data):
 #     '''
