@@ -90,7 +90,6 @@ def get_rsi(closes,p=14):
     Return:
         cci: Commodity Channel Index of all stocks as a 1D-array
     '''
-    p = 14
     pct = closes[-p:] / closes[-p-1:-1] - 1
     up = pct 
     up[up<0] = np.nan 
@@ -137,8 +136,7 @@ def get_macd(closes,fp=12,sp=26):
     return macd
 
 
-def get_natr(highs,lows,closes,p):
-    p = 30
+def get_natr(highs,lows,closes,p=30):
     hl = highs[-p:] - lows[-p:]
     hcp = np.abs(highs[-p:] - closes[-p-1:-1])
     lcp = np.abs(lows[-p:] - closes[-p-1:-1])
