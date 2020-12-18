@@ -14,7 +14,6 @@ import numpy as np
 import time
 from utils import *
 
-
 contest_channel=grpc.insecure_channel('47.103.23.116: 56702')
 question_channel=grpc.insecure_channel('47.103.23.116: 56701')
 
@@ -31,41 +30,18 @@ login_response=contest_stub.login(contest_pb2.LoginRequest(user_id=88,user_pin='
 session_key=login_response.session_key
 init_capital=login_response.init_capital
 
-# #返回为series，对应各股票
-# def run_strategy(df):
-#     '''
-#     stock_candidate-> dataframe
-#     |stockid|long_short_flag|[OPTIONAL]something like rank |
-#     '''
-#     stock_candidate=pd.DataFrame()
-#     ddf=df[['day','stockid','close']].set_index(['day','stockid'])['close'].unstack()
-#     ddf=(ddf-ddf.shift(1))/ddf.shift(1)
-#     stocks=ddf.rolling(3).mean().iloc[-1,:]
-#     max10=stocks.nlargest(10)
-#     min10=stocks.nsmallest(10)
-    
-#     stock_candidate=stocks.copy()
-#     stock_candidate[:]=0
-#     stock_candidate[stocks.isin(max10)]=1
-#     stock_candidate[stocks.isin(min10)]=-1
-    
-#     #check=(len(max10)!=0)| (len(min10)!=0 )
-#     #stock_candidate=stocks  if check else stock_candidate
-#     return stock_candidate
-
-
 
 #%%
 def get_factors(data):
     '''1*stock'''
-    o = data['open'].unstack()
-    stocks=o.columns.values
+    o = data['open'].unstack(level=1)
+    stock=o.columns.values
     day=o.index[-1]
     o=o.values
-    h = data['high'].unstack().values
-    l = data['low'].unstack().values
-    c = data['close'].unstack().values
-    v = data['volume'].unstack().values
+    h = data['high'].unstack(level=1).values
+    l = data['low'].unstack(level=1).values
+    c = data['close'].unstack(level=1).values
+    v = data['volume'].unstack(level=1).values
 
     mom=get_mom(c,3)
     vol=get_vol(c,3)
@@ -76,16 +52,16 @@ def get_factors(data):
     result=pd.DataFrame([mom, vol, max52, min52],
                 index=['mom', 'vol', 'max52', 'min52'],dtype=float).T
     result['day']=day
-    result['stocks']=stocks
+    result['stock']=stock
     result['close']=c[-1]
-    return result # stocks|day|factors|close
+    return result # stocks|day|factors....|close
 
 #选n个因子,返回因子名
-def select_factors(factors,n=10):
-    factors=factors.set_index(['day','stocks'])
+def select_factors(factors,n=10,period=5):
+    factors=factors.set_index(['day','stock'])
     factor_names=factors.columns.drop(['close'])
     
-    c=factors['close'].unstack().shift(1)
+    c=factors['close'].unstack(level=1).pct_change(period).shift(-period) 
     def spearman(x):
         spear=x.unstack().rank(axis=1)-c.rank(axis=1)
         spearcorrs=6*(spear*spear).sum(axis=1)/351/(351*351-1)
@@ -96,7 +72,7 @@ def select_factors(factors,n=10):
     return factor_select
 
 #根据因子优化出权重
-def get_weight(factors,n=10,index_direction='neutral'):
+def get_weight(factors,n=10,max_exposure=0.1,index_direction='neutral'):
 
     factors=factors.set_index('stock')
     head=[]
@@ -109,52 +85,47 @@ def get_weight(factors,n=10,index_direction='neutral'):
     head=list(set(head))
     tail=list(set(tail))
 
-    #理想仓位占比
+    intersect=np.intersect1d(head,tail)
+    head=np.setdiff1d(head,intersect)
+    tail=np.setdiff1d(tail,intersect)
+    #print('head num',len(head))
+    #print('tail num',len(tail))
+
+    #根据大盘调整仓位占比
     weight=pd.Series(0,index=factors.index)
     if index_direction=='up':
-        weight[head]=(1+max_exposure)/(1-max_exposure)
-        weight[tail]=-1
+        weight[head]=((1+max_exposure)/2)/len(head)
+        weight[tail]=-((1-max_exposure)/2)/len(tail)
     elif index_direction=='down':
-        weight[head]=1
-        weight[tail]=-(1-max_exposure)/(1+max_exposure)
+        weight[head]=((1-max_exposure)/2)/len(head)
+        weight[tail]=-((1+max_exposure)/2)/len(tail)
     else:
-        weight[head]=1
-        weight[tail]=-1
+        weight[head]=0.5/(len(head))
+        weight[tail]=-0.5/(len(tail))
 
+    #print('weight',sum(weight))
     return weight
 
 #远程返回的仓位，金额，commison是佣金
-def get_position(weights,prev_pos,prev_capital,data_now,comission):
+def get_position(weights,dailystk,prev_pos,
+                prev_capital,comission):
     '''
-    target_pos-> np.array
+    target_pos-> list
+    TODO comission prev_pos check
+    
     '''
-    target_pos=0
-    
-    length=len(weights[weights!=0])
+    close=dailystk.set_index(['stock'])['close']
 
-    df_now['stocks']=weights.to_list()    
-    df_now['stocks']=df_now['stocks']/df_now['close']
+    target_pos=prev_capital*weights/close
+    target_pos=target_pos.astype(int)
 
-    print(sum(df_now['stocks']),prev_capital,length)
-    
-    temp=pd.Series(df_now.set_index('stockid')['stocks'])
-    #df_now['stocks1']=df_now['stocks']*prev_capital/length
-    #df_now['stocks-1']=-df_now['stocks']*prev_capital/length
-    if length!=0:
-        temp=temp*prev_capital/length
-    temp=temp.apply(lambda x:int(x))
-    
-    target_pos=temp.to_list()
-    m=pd.Series(target_pos)
-    print(m[m!=0])
-    return target_pos
+    return target_pos.tolist()
 
 #%%
-
 i=0#控制seq
 count=0
 data_lst=[]
-period=2 #eg 每两天跑一次策略
+period=5 #eg 每两天跑一次策略
 comission=0
 max_exposure=0.1#大盘上涨，多头增加，大盘下跌，空头增加
 single_stock_position_limit=0.1
@@ -166,38 +137,38 @@ factors=pd.DataFrame()
 while True:
     time.sleep(0.5)
     question_response=question_stub.get_question(question_pb2.QuestionRequest(user_id=88,sequence=i))
+    print(question_response.sequence)
     if question_response.sequence!=-1:
         dailystk = [x.values for x in question_response.dailystk]
         data_lst.extend(dailystk)
 
-        if count%period==0:
+        if count%period==0 and count>10:#刚开始不动
             print('run strategy')
-            #也可以考虑只取eg data_lst[-50:]
-            df=pd.DataFrame(data_lst,columns=['day','stockid','open','high','low','close','volume'],dtype=int)    
+            df=pd.DataFrame(data_lst,columns=['day','stock','open','high','low','close','volume'],
+                            dtype=float).set_index(['day','stock'])
             
             dailyfactor=get_factors(df)  #从数据获取因子
 
-            facotrs=factors.append(dailyfactor)  #向因子库追加
+            factors=factors.append(dailyfactor)  #向因子库追加
             
-            factor_select=select_factors(factors)  #计算相关系数选取因子
+            factor_select=select_factors(factors,n=10,period=period)  #计算相关系数选取因子
 
-            index_direction='neutral'#大盘方向，需要不断更新
-            weights=get_weight(dailyfactor[factor_select+['stock']])  #取出本期选出因子的因子值
+            index_direction='neutral'#TODO 大盘方向，用于控制exposure
+            weights=get_weight(dailyfactor[factor_select+['stock']],
+                            n=10,max_exposure=0.1,index_direction=index_direction)  #取出本期选出因子的因子值
             
             target_pos=get_position(weights,
-                                    pd.DataFrame(dailystk,columns=['day','stockid','open','high','low','close','volume'],dtype=float),
+                                    pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
                                     question_response.positions,
                                     question_response.capital,
-                                    max_exposure,
-                                    index_direction,
                                     comission)
 
-            # summit answer
-            # submit_response = contest_stub.submit_answer(contest_pb2.AnswerRequest(user_id=88,user_pin='dDTSvdwk',session_key=login_response.session_key,sequence=i,positions=target_pos))
+            ##summit answer
+            submit_response = contest_stub.submit_answer(contest_pb2.AnswerRequest(user_id=88,user_pin='dDTSvdwk',session_key=login_response.session_key,sequence=i,positions=target_pos))
 
-            # print(submit_response,question_response.capital)
-            # if not submit_response.accepted:
-            #     print(submit_response.reason)
+            print(submit_response,question_response.capital)
+            if not submit_response.accepted:
+                print(submit_response.reason)
 
         i=question_response.sequence+1
         count+=1
@@ -209,3 +180,5 @@ question_channel.close()
 # if __name__ == '__main__':
 #     logging.basicConfig()
 #     run()
+
+# %%

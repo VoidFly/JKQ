@@ -1,4 +1,4 @@
-import talib 
+#import talib 
 import numpy as np
 
 # Rolling function to replace pd.Series.rolling()
