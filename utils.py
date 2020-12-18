@@ -1,10 +1,11 @@
 import talib 
 import numpy as np
 
-def rolling_window(a, window):
-    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
-    strides = a.strides + (a.strides[-1],)
-    return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+# Rolling function to replace pd.Series.rolling()
+def rolling_window(data, window):
+    shape = data.shape[:-1] + (data.shape[-1] - window + 1, window)
+    strides = data.strides + (data.strides[-1],)
+    return np.lib.stride_tricks.as_strided(data, shape=shape, strides=strides)
 
 # 动量
 def get_mom(closes,t):
@@ -26,8 +27,23 @@ def get_52weeklow(closes):
     low=closes[-252:].min(axis=0)
     return (closes[-1]-low)/low
 
+# 价量相关性
+
+
+# 下行波动占比
+
+
 # CCI Commodity Channel Index
 def get_cci(highs,lows,closes,p):
+    '''
+    Args:
+        highs: 2D-array of high prices, time as row indexes and each stock for one column
+        lows: 2D-array of low prices, time as row indexes and each stock for one column
+        closes: 2D-array of close prices, time as row indexes and each stock for one column
+        p: time period
+    Return:
+        cci: Commodity Channel Index of all stocks as a 1D-array
+    '''
     h = highs[-2*p:]
     l = lows[-2*p:]
     c = closes[-2*p:]
@@ -44,6 +60,17 @@ def get_cci(highs,lows,closes,p):
 
 # KDJ (Stochastic)
 def get_kdj(highs,lows,closes,fkp=9,skp=3,sdp=3):
+    '''
+    Args:
+        highs: 2D-array of high prices, time as row indexes and each stock for one column
+        lows: 2D-array of low prices, time as row indexes and each stock for one column
+        closes: 2D-array of close prices, time as row indexes and each stock for one column
+        fkp: fast k period, time period to calculate rsv
+        skp: slow k period, time period to calculate k
+        sdp: slow d period, time period to calculate d
+    Return:
+        cci: Commodity Channel Index of all stocks as a 1D-array
+    '''
     hh = np.max(rolling_window(highs.T,fkp),axis=2).T # highest high
     ll = np.min(rolling_window(lows.T,fkp),axis=2).T # lowest low
     rsv = 100 * (closes[-hh.shape[0]:] - ll) / (hh - ll)
