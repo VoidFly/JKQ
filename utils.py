@@ -90,7 +90,6 @@ def get_rsi(closes,p=14):
     Return:
         cci: Commodity Channel Index of all stocks as a 1D-array
     '''
-    p = 14
     pct = closes[-p:] / closes[-p-1:-1] - 1
     up = pct 
     up[up<0] = np.nan 
@@ -104,7 +103,6 @@ def get_rsi(closes,p=14):
 
 # TRIX - 1-day Rate-Of-Change (ROC) of a Triple Smooth EMA
 def get_trix(closes,p=14):
-    w = np.asarray([np.power(((p-1)/(p+1)),x+1) for x in range(p)])
     w = np.asarray([np.power(((p-1)/(p+1)),p-x-1) for x in range(p)]) * 2 / (p + 1)
     ema1 = np.average(rolling_window(closes[-3*p:].T,p),axis=2,weights=w)
     ema2 = np.average(rolling_window(ema1,p),axis=2,weights=w)
@@ -128,52 +126,22 @@ def get_willr(highs,lows,closes,p=14):
     willr = 100 * (hh[-1] - closes[-1]) / (hh[-1] - ll[-1])
     return willr
 
-    
-# def get_factors(data):
-#     '''
-#     @params:
-#     data: 2D-array, rows as daily numbers, columns as open,high,low,close,volume respectively
 
-#     @returns:
-#     factors: 1D-array
-#     '''
-#     o = data[:,0]
-#     h = data[:,1]
-#     l = data[:,2]
-#     c = data[:,3]
-#     v = data[:,4]
-#     mom = talib.MOM(c,timeperiod=10)
-#     vol = talib.STDDEV(c,timeperiod=10)
-#     max52 = talib.MAX(h,timeperiod=252)
-#     min52 = talib.MIN(l,timeperiod=252)
+def get_macd(closes,fp=12,sp=26):
+    w1 = np.asarray([np.power(((fp-1)/(fp+1)),fp-x-1) for x in range(fp)]) * 2 / (fp + 1)
+    w2 = np.asarray([np.power(((sp-1)/(sp+1)),sp-x-1) for x in range(sp)]) * 2 / (sp + 1)
+    ema1 = np.average(rolling_window(closes[-fp:].T,fp),axis=2,weights=w1)
+    ema2 = np.average(rolling_window(closes[-sp:].T,sp),axis=2,weights=w2)
+    macd = ema1 - ema2
+    return macd
 
-#     # 价量相关性、下行波动占比，ij是什么？
-#     # 
-#     # clr =  # close_volume relation
-#     # dvr =  # downstream volatility ratio
 
-#     # Commodity Channel Index
-#     cci = talib.CCI(h,l,c,timeperiod=14)
-
-#     # KDJ (Stochastic)
-#     K, D = talib.STOCH(h,l,c,fastk_period=5, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
-#     J = 3 * D - 2 * K
-
-#     # Relative Strength Index
-#     rsi = talib.RSI(c,timeperiod=14)
-
-#     # TRIX - 1-day Rate-Of-Change (ROC) of a Triple Smooth EMA
-#     trix = talib.TRIX(c, timeperiod=30)
-
-#     # Williams' %R
-#     willr = talib.WILLR(h, l, c, timeperiod=14)
-
-#     # Moving Average Convergence/Divergence
-#     macd, macdsignal, macdhist = talib.MACD(c, fastperiod=12, slowperiod=26, signalperiod=9)
-
-#     # Normalized Average True Range
-#     atr = talib.NATR(h,l,c,timeperiod=14)
-
-#     return np.asarray([mom, vol, max52, min52, cci, K, D, J, rsi, trix, willr, macd, macdsignal, macdhist, atr]).transpose()
+def get_natr(highs,lows,closes,p=30):
+    hl = highs[-p:] - lows[-p:]
+    hcp = np.abs(highs[-p:] - closes[-p-1:-1])
+    lcp = np.abs(lows[-p:] - closes[-p-1:-1])
+    tr = np.maximum(hl,hcp,lcp)
+    natr = np.mean(tr,axis=0) / closes[-1]
+    return natr
 
 
