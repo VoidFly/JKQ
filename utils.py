@@ -9,12 +9,12 @@ def rolling_window(data, window):
 
 # 动量
 def get_mom(closes,t):
-    mom = closes[-t:].mean(axis=0)
+    mom = (closes[-t:] / closes[-t-1:-1]).mean(axis=0)
     return mom
 
 # 波动率
 def get_vol(closes,t):
-    vol = closes[-t:].std(axis=0)
+    vol = (closes[-t:] / closes[-t-1:-1]).std(axis=0)
     return vol
 
 # 52周最高

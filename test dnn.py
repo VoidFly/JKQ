@@ -160,7 +160,9 @@ lending_rate=0.01#TODO
 borrow_rate=0.05#TODO
 leverage=2#TODO
 factors=pd.DataFrame()
-model = load_model('my_dnn.h5')
+
+#%%
+model = load_model('my_dnn2.h5')
 
 #%%
 while True:
@@ -192,7 +194,7 @@ while True:
                 target_pos=get_position(weights,
                                         pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
                                         question_response.positions,
-                                        question_response.capital / 100,
+                                        question_response.capital / 2,
                                         comission)
             else:
                 target_pos=get_position(weights,
