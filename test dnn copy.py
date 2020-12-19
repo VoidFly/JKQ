@@ -22,23 +22,6 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 set_session(tf.Session(config=config))
 
-contest_channel=grpc.insecure_channel('47.103.23.116: 56702')
-question_channel=grpc.insecure_channel('47.103.23.116: 56701')
-
-contest_stub=contest_pb2_grpc.ContestStub(contest_channel)
-question_stub=question_pb2_grpc.QuestionStub(question_channel)
-
-login_response=contest_stub.login(contest_pb2.LoginRequest(user_id=88,user_pin='dDTSvdwk'))
-# if not login_response.success:
-#     print('login failed:',login_response.reason)
-#     contest_channel.close()
-#     question_channel.close()
-#     return
-
-session_key=login_response.session_key
-init_capital=login_response.init_capital
-
-
 #%%
 def get_factors(data):
     '''1*stock'''
@@ -51,7 +34,7 @@ def get_factors(data):
     c = data['close'].unstack(level=1).values
     v = data['volume'].unstack(level=1).values
     avg = get_avg(c,3)
-    mom=get_mom(c,3)
+    mom=get_mom(c,5)
     vol=get_vol(c,3)
     
     max52=get_52weekhigh(c)
@@ -150,45 +133,18 @@ def get_weight(factors,n=10,max_exposure=0.1,index_direction='neutral'):
     #print('weight',sum(weight))
     return weight
 #%%
-def dnn_weight(factors,model,n=10,max_exposure=0.09):
-    factors=factors.set_index('stock')
-    # pred = model.pred(factors.values)
-    pred = pd.Series(model.predict(factors.values).flatten())
-    head = pred.nlargest(10).index.tolist()
-    tail = pred.nsmallest(10).index.tolist()
-    weight=pd.Series(0,index=factors.index)
-    # weight[head]=0.5/(len(head))
-    # weight[tail]=-0.5/(len(tail))
-    weight[head]=((1+max_exposure)/2)/len(head)
-    weight[tail]=-((1-max_exposure)/2)/len(tail)
-    return weight
-#%%
-def dnn_weight(factors,model,n=10,max_exposure=0.09):
-    factors=factors.set_index('stock')
-    # pred = model.pred(factors.values)
-    pred = pd.Series(model.predict(factors.values).flatten())
-    
-    # target=pred.abs().nlargest(2*n)
-    # head = target[target>0].index.tolist()
-    # tail = target[target<=0].index.tolist()
-    head = pred.nlargest(10).index.tolist()
-    tail = pred.nsmallest(10).index.tolist()
-    
-    weight=pd.Series(0,index=factors.index)
-    if np.abs(len(head)-len(tail))<= max_exposure/(1/(2*n) ):
-        weight[head]=1/(2*n)
-        weight[tail]=-1/(2*n)
-    elif len(head)-len(tail)> max_exposure/(1/(2*n) ):
-        weight[head]=(1+max_exposure)/(2*len(head))
-        if len(tail)==0:
-            tail=pred.nsmallest(n).index.tolist()
-        weight[tail]=-(1-max_exposure)/(2*len(tail))
-    elif len(tail)-len(head)> max_exposure/(1/(2*n) ):
-        weight[tail]=-(1+max_exposure)/(2*len(tail))
-        if len(head)==0:
-            head=pred.nlargest(n).index.tolist()
-        weight[head]=(1-max_exposure)/(2*len(head))
-    return weight
+# def dnn_weight(factors,model,n=10,max_exposure=0.09):
+#     factors=factors.set_index('stock')
+#     # pred = model.pred(factors.values)
+#     pred = pd.Series(model.predict(factors.values).flatten())
+#     head = pred.nlargest(n).index.tolist()
+#     tail = pred.nsmallest(n).index.tolist()
+#     weight=pd.Series(0,index=factors.index)
+#     # weight[head]=0.5/(len(head))
+#     # weight[tail]=-0.5/(len(tail))
+#     weight[head]=((1+max_exposure)/2)/len(head)
+#     weight[tail]=-((1-max_exposure)/2)/len(tail)
+#     return weight
 # def feed_nn()
 #远程返回的仓位，金额，commison是佣金
 def get_position(weights,dailystk,prev_pos,
@@ -206,6 +162,24 @@ def get_position(weights,dailystk,prev_pos,
     return target_pos.tolist()
 
 #%%
+model = load_model('dnn_overfit2.h5')
+#%%
+contest_channel=grpc.insecure_channel('47.103.23.116: 56702')
+question_channel=grpc.insecure_channel('47.103.23.116: 56701')
+
+contest_stub=contest_pb2_grpc.ContestStub(contest_channel)
+question_stub=question_pb2_grpc.QuestionStub(question_channel)
+
+login_response=contest_stub.login(contest_pb2.LoginRequest(user_id=88,user_pin='dDTSvdwk'))
+# if not login_response.success:
+#     print('login failed:',login_response.reason)
+#     contest_channel.close()
+#     question_channel.close()
+#     return
+
+session_key=login_response.session_key
+init_capital=login_response.init_capital
+
 i=0#控制seq
 count=0
 data_lst=[]
@@ -219,14 +193,54 @@ leverage=2#TODO
 factors=pd.DataFrame()
 
 #%%
-model = load_model('dnn_overfit.h5')
+contest_channel=grpc.insecure_channel('47.103.23.116: 56702')
+question_channel=grpc.insecure_channel('47.103.23.116: 56701')
+
+contest_stub=contest_pb2_grpc.ContestStub(contest_channel)
+question_stub=question_pb2_grpc.QuestionStub(question_channel)
+
+login_response=contest_stub.login(contest_pb2.LoginRequest(user_id=88,user_pin='dDTSvdwk'))
+
+session_key=login_response.session_key
+init_capital=login_response.init_capital
+
+i=0#控制seq
+count=0
+data_lst=[]
+period=5 #eg 每两天跑一次策略
+comission=0#TODO
+max_exposure=0.1#大盘上涨，多头增加，大盘下跌，空头增加
+single_stock_position_limit=0.1#TODO
+lending_rate=0.01#TODO
+borrow_rate=0.05#TODO
+leverage=2#TODO
+empty_check = False
+factors=pd.DataFrame()
+#%%
+# model = load_model('dnn_overfit2.h5')
+period = 1
+# def dnn_weight(factors,model,n=10,max_exposure=0.09):
+#     factors=factors.set_index('stock')
+#     # pred = model.pred(factors.values)
+#     # pred = pd.Series(model.predict(factors.values).flatten())
+#     pred = factors['mom']
+#     head = pred.nlargest(n).index.tolist()
+#     tail = pred.nsmallest(n).index.tolist()
+#     weight=pd.Series(0,index=factors.index)
+#     # weight[head]=0.5/(len(head))
+#     # weight[tail]=-0.5/(len(tail))
+#     weight[head]=((1+max_exposure)/2)/len(head)
+#     weight[tail]=-((1-max_exposure)/2)/len(tail)
+#     return weight
 
 #%%
+empty_check = False
 while True:
     time.sleep(1)
     question_response=question_stub.get_question(question_pb2.QuestionRequest(user_id=88,sequence=i))
     print(question_response.sequence)
     if question_response.sequence!=-1:
+        print(question_response.positions)
         dailystk = [x.values for x in question_response.dailystk]
         data_lst.extend(dailystk)
 
@@ -240,13 +254,13 @@ while True:
             factors=factors.append(dailyfactor)  #向因子库追加
             
             #factor_select=select_factors(factors,n=10,period=period)  #计算相关系数选取因子
-            factor_select=['avg', 'mom', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr']
+            factor_select=['mom', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr']
             # factor_select=['mom', 'vol', 'max52', 'min52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr']
             index_direction='neutral'#TODO 大盘方向，用于控制exposure
             # weights=get_weight(dailyfactor[factor_select+['stock']],
                             # n=10,max_exposure=0.1,index_direction=index_direction)  #取出本期选出因子的因子值
                             
-            weights = dnn_weight(dailyfactor[factor_select+['stock']],model)
+            weights = dnn_weight(dailyfactor[factor_select+['stock']],model,n=6)
             if count < 100:
                 target_pos=get_position(weights,
                                         pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
@@ -257,9 +271,11 @@ while True:
                 target_pos=get_position(weights,
                                         pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
                                         question_response.positions,
-                                        question_response.capital,
+                                        question_response.capital * 1.5,
                                         comission)
-
+            if empty_check:
+                print('Check!')
+                target_pos = np.zeros(351)
             ##summit answer
             submit_response = contest_stub.submit_answer(contest_pb2.AnswerRequest(user_id=88,user_pin='dDTSvdwk',session_key=login_response.session_key,sequence=i,positions=target_pos))
 
@@ -269,6 +285,8 @@ while True:
 
         i=question_response.sequence+1
         count+=1
+    else:
+        time.sleep(1)
 
 contest_channel.close()
 question_channel.close()
@@ -279,3 +297,4 @@ question_channel.close()
 #     run()
 
 # %%
+empty_check = False
