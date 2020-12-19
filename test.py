@@ -202,7 +202,7 @@ while True:
                     continue
         i=question_response.sequence+1
         count+=1
-    time.sleep(1)
+    time.sleep(2)
 
         
 
