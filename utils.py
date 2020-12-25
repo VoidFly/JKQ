@@ -105,7 +105,7 @@ def get_rsi(closes,p=14):
     up = np.nanmean(up,axis=0)
     down = pct 
     down[down>0] = np.nan 
-    down = np.nanmean(down,axis=0)
+    down = -np.nanmean(down,axis=0)
     rsi = 100 - (100 / (1 + up/down))
     return rsi
 
@@ -161,4 +161,13 @@ def get_natr(highs,lows,closes,p=30):
     natr = np.mean(tr,axis=0) / closes[-1]
     return natr
 
+def get_obv(closes,volumes,prev_factor=None):
+    '''
+    prev_factor: 1D-array, span the stock space
+    '''
+    if prev_factor is None:
+        obv=np.sign(closes[-1]-closes[-2])*volumes[-1]
+    else:
+        obv=prev_factor+np.sign(closes[-1]-closes[-2])*volumes[-1]
+    return obv
 
