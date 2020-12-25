@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #%%
-
+%reload_ext autoreload
+%autoreload 2
 import logging
 import grpc
 import pandas as pd
@@ -99,16 +100,17 @@ def get_factors(data,prev_factors):
     willr = get_willr(h,l,c)
     macd = get_macd(c)
     natr = get_natr(h,l,c)
+    print(natr)
+    mfi=get_mfi(c,h,l,v)
+    print(mfi)
+    #mfi可能更好
+    # if prev_factors.empty:
+    #     obv=get_obv(c,v)
+    # else:
+    #     obv=get_obv(c,v,prev_factors['obv'].unstack(level=1).values[0])
 
-    if prev_factors.empty:
-        obv=get_obv(c,v)
-        print(obv)
-    else:
-        obv=get_obv(c,v,prev_factors['obv'].unstack(level=1).values[0])
-        print(obv)
-
-    result=pd.DataFrame([mom, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr,obv],
-                index=['mom', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','obv'],dtype=float).T
+    result=pd.DataFrame([mom, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr,mfi],
+                index=['mom', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi'],dtype=float).T
 
     result['day']=day
     result['stock']=stock
@@ -245,7 +247,7 @@ while True:
         dailystk = [x.values for x in question_response.dailystk]
         data_lst.extend(dailystk)
 
-        if count>2:#开始不动，只要有新数据就跑一次策略
+        if count>10:#开始不动，只要有新数据就跑一次策略
             print('run strategy')
             df=pd.DataFrame(data_lst,columns=['day','stock','open','high','low','close','volume'],
                             dtype=float).set_index(['day','stock'])
@@ -258,7 +260,7 @@ while True:
 
             # factor_select=select_factors(factors,n=10,period=period)  #计算相关系数选取因子
             # factor_select=['avg', 'mom', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr']
-            # factor_select=['mom', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr']
+            # factor_select=['mom', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi']
             # index_direction='neutral'#TODO 大盘方向，用于控制exposure
             # # weights=get_weight(dailyfactors[factor_select+['stock']],
             #                 # n=10,max_exposure=0.1,index_direction=index_direction)  #取出本期选出因子的因子值
@@ -293,7 +295,7 @@ while True:
         i=question_response.sequence+1
         count+=1
 
-        if count==5:
+        if count==20:
             break
 
     time.sleep(1)
