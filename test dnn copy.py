@@ -133,18 +133,18 @@ def get_weight(factors,n=10,max_exposure=0.1,index_direction='neutral'):
     #print('weight',sum(weight))
     return weight
 #%%
-# def dnn_weight(factors,model,n=10,max_exposure=0.09):
-#     factors=factors.set_index('stock')
-#     # pred = model.pred(factors.values)
-#     pred = pd.Series(model.predict(factors.values).flatten())
-#     head = pred.nlargest(n).index.tolist()
-#     tail = pred.nsmallest(n).index.tolist()
-#     weight=pd.Series(0,index=factors.index)
-#     # weight[head]=0.5/(len(head))
-#     # weight[tail]=-0.5/(len(tail))
-#     weight[head]=((1+max_exposure)/2)/len(head)
-#     weight[tail]=-((1-max_exposure)/2)/len(tail)
-#     return weight
+def dnn_weight(factors,model,n=10,max_exposure=0.09):
+    factors=factors.set_index('stock')
+    # pred = model.pred(factors.values)
+    pred = pd.Series(model.predict(factors.values).flatten())
+    head = pred.nlargest(n).index.tolist()
+    tail = pred.nsmallest(n).index.tolist()
+    weight=pd.Series(0,index=factors.index)
+    # weight[head]=0.5/(len(head))
+    # weight[tail]=-0.5/(len(tail))
+    weight[head]=((1+max_exposure)/2)/len(head)
+    weight[tail]=-((1-max_exposure)/2)/len(tail)
+    return weight
 # def feed_nn()
 #远程返回的仓位，金额，commison是佣金
 def get_position(weights,dailystk,prev_pos,
@@ -219,28 +219,29 @@ factors=pd.DataFrame()
 #%%
 # model = load_model('dnn_overfit2.h5')
 period = 1
-# def dnn_weight(factors,model,n=10,max_exposure=0.09):
-#     factors=factors.set_index('stock')
-#     # pred = model.pred(factors.values)
-#     # pred = pd.Series(model.predict(factors.values).flatten())
-#     pred = factors['mom']
-#     head = pred.nlargest(n).index.tolist()
-#     tail = pred.nsmallest(n).index.tolist()
-#     weight=pd.Series(0,index=factors.index)
-#     # weight[head]=0.5/(len(head))
-#     # weight[tail]=-0.5/(len(tail))
-#     weight[head]=((1+max_exposure)/2)/len(head)
-#     weight[tail]=-((1-max_exposure)/2)/len(tail)
-#     return weight
+def dnn_weight(factors,model,n=10,max_exposure=0.09):
+    factors=factors.set_index('stock')
+    # pred = model.pred(factors.values)
+    # pred = pd.Series(model.predict(factors.values).flatten())
+    pred = factors['mom']
+    head = pred.nlargest(n).index.tolist()
+    tail = pred.nsmallest(n).index.tolist()
+    weight=pd.Series(0,index=factors.index)
+    # weight[head]=0.5/(len(head))
+    # weight[tail]=-0.5/(len(tail))
+    weight[head]=((1+max_exposure)/2)/len(head)
+    weight[tail]=-((1-max_exposure)/2)/len(tail)
+    return weight
 
 #%%
-empty_check = False
+empty_check = True
 while True:
     time.sleep(1)
     question_response=question_stub.get_question(question_pb2.QuestionRequest(user_id=88,sequence=i))
     print(question_response.sequence)
     if question_response.sequence!=-1:
-        print(question_response.positions)
+        # print(question_response.positions[question_response.positions!=0])
+        print(question_response.capital)
         dailystk = [x.values for x in question_response.dailystk]
         data_lst.extend(dailystk)
 
@@ -271,7 +272,7 @@ while True:
                 target_pos=get_position(weights,
                                         pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
                                         question_response.positions,
-                                        question_response.capital * 1.5,
+                                        question_response.capital * 1.8,
                                         comission)
             if empty_check:
                 print('Check!')
@@ -279,7 +280,7 @@ while True:
             ##summit answer
             submit_response = contest_stub.submit_answer(contest_pb2.AnswerRequest(user_id=88,user_pin='dDTSvdwk',session_key=login_response.session_key,sequence=i,positions=target_pos))
 
-            print(submit_response,question_response.capital)
+            print(submit_response)
             if not submit_response.accepted:
                 print(submit_response.reason)
 
