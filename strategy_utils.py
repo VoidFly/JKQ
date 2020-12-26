@@ -123,3 +123,37 @@ def dnn_weight(factors,model,n=10,max_exposure=0.09):
     weight[head]=((1+max_exposure)/2)/len(head)
     weight[tail]=-((1-max_exposure)/2)/len(tail)
     return weight
+
+IF_REV = {
+    'avg':True,
+    'mom':True,
+    'vol':False,
+    'max52':True,
+    'min52':True,
+    'cci':True,
+    'K':True,
+    'D':True,
+    'J':False,
+    'rsi':True,
+    'trix':True,
+    'willr':False,
+    'macd':True,
+    'natr':False,
+    'mfi':True
+    }
+def get_weight(dailyfactors,head_n=10,tail_n=10):
+    
+    all_weight = np.empty((0,dailyfactors.shape[0]))
+    for fac in dailyfactors:
+        head = dailyfactors[fac].nlargest(head_n).index.tolist()
+        tail = dailyfactors[fac].nsmallest(tail_n).index.tolist()
+        weight = np.zeros(351)
+        weight[head] = 1 / head_n
+        weight[tail] = -1 / tail_n
+        if IF_REV[fac]:
+            weight = weight * -1
+        all_weight = np.vstack([all_weight,weight])
+    sum_weight = all_weight.mean(axis=0)
+    sum_weight[sum_weight>0] = sum_weight[sum_weight>0] / sum_weight[sum_weight>0].sum()
+    sum_weight[sum_weight<0] = sum_weight[sum_weight<0] / sum_weight[sum_weight<0].sum() * -1
+    return sum_weight
