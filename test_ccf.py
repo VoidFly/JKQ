@@ -110,23 +110,24 @@ while True:
                         count+=1
                         continue#如果提交超时，直接请求新数据
             
-            if count%63==0:
-                select_mean=np.array(all_return[-126:]).mean(axis=0)
-                factor_select=allselects[np.argmax(select_mean)]
-                print('修改策略为过去126天中跑的最好的:"+str(factor_select)')
             
             #构建策略二、三的权重
+            if count>=21:
+                #使用前天的factor值计算权重
+                factor_temp=pd.DataFrame(factors_lst[-3*351:-2*351],columns=dailyfactors.columns,dtype=float)
+                weights1=get_weight(factor_temp[factor_select1],head_n=10,tail_n=10)
+                weights2 = get_weight(factor_temp[factor_select2],head_n=10,tail_n=10)
+                weights3 = get_weight(factor_temp[factor_select3],head_n=10,tail_n=10)
             
-             #使用前天的factor值计算权重
-            factor_temp=pd.DataFrame(factors_lst[-3*351:-2*351],columns=dailyfactors.columns,dtype=float)
-            weights1=get_weight(factor_temp[factor_select1],head_n=10,tail_n=10)
-            weights2 = get_weight(factor_temp[factor_select2],head_n=10,tail_n=10)
-            weights3 = get_weight(factor_temp[factor_select3],head_n=10,tail_n=10)
-            
-            #使用今天的收益率
-            dayreturn=np.array(np.log(df['close'].iloc[-351:]))-np.array(np.log(df['close'].iloc[-702:-351]))
-            returns=np.array([np.dot(weights1,dayreturn),np.dot(weights2,dayreturn),np.dot(weights3,dayreturn)])
-            all_return.append(returns)
+                #使用今天的收益率
+                dayreturn=np.array(np.log(df['close'].iloc[-351:]))-np.array(np.log(df['close'].iloc[-702:-351]))
+                returns=np.array([np.dot(weights1,dayreturn),np.dot(weights2,dayreturn),np.dot(weights3,dayreturn)])
+                all_return.append(returns)
+                
+                if count%63==0:
+                    select_mean=np.array(all_return[-126:]).mean(axis=0)
+                    factor_select=allselects[np.argmax(select_mean)]
+                    print('修改策略为过去126天中跑的最好的:"+str(factor_select)')
                 
         i=question_response.sequence+1
         count+=1
