@@ -49,6 +49,44 @@ def get_factors(data,prev_factors):
     result['close']=c[-1]
     return result # stocks|day|factors....|close
 
+def get_factors_with_ohlcv(o,h,l,c,v):
+    '''
+    1*stock
+    prev_factors
+    '''
+
+    # o = data['open'].unstack(level=1)
+    # stock=o.columns.values
+    # day=o.index[-1]
+    # o=o.values
+    # h = data['high'].unstack(level=1).values
+    # l = data['low'].unstack(level=1).values
+    # c = data['close'].unstack(level=1).values
+    # v = data['volume'].unstack(level=1).values
+
+    avg=get_avg(c,3)
+    mom=get_mom(c,5)
+    vol=get_vol(c,5)
+    
+    max52=get_52weekhigh(c)
+    #min52=get_52weeklow(c)
+    cci = get_cci(h,l,c)
+    K,D,J = get_kdj(h,l,c)
+    rsi = get_rsi(c)
+    trix = get_trix(c)
+    willr = get_willr(h,l,c)
+    macd = get_macd(c)
+    natr = get_natr(h,l,c)
+    mfi=get_mfi(c,h,l,v)
+
+    result=pd.DataFrame([avg, mom, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr,mfi],
+                index=['avg','mom', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi'],dtype=float).T
+
+    # result['day']=day
+    # result['stock']=stock
+    # result['close']=c[-1]
+    return result # stocks|day|factors....|close
+
 def select_factors(factors,n=10,period=5):
     factors=factors.set_index(['day','stock'])
     factor_names=factors.columns.drop(['close'])
@@ -159,7 +197,6 @@ IF_REV = {
     'mfi':True
     }
 def get_weight(dailyfactors,head_n=10,tail_n=10):
-    
     all_weight = np.empty((0,dailyfactors.shape[0]))
     for fac in dailyfactors:
         head = dailyfactors[fac].nlargest(head_n).index.tolist()
@@ -174,3 +211,34 @@ def get_weight(dailyfactors,head_n=10,tail_n=10):
     sum_weight[sum_weight>0] = sum_weight[sum_weight>0] / sum_weight[sum_weight>0].sum()
     sum_weight[sum_weight<0] = sum_weight[sum_weight<0] / sum_weight[sum_weight<0].sum() * -1
     return sum_weight
+
+def get_all_weights(dailyfactors,head_n=10,tail_n=10):
+    all_weight = np.empty((0,351))
+    for fac in dailyfactors:
+        head = dailyfactors[fac].nlargest(head_n).index.tolist()
+        tail = dailyfactors[fac].nsmallest(tail_n).index.tolist()
+        weight = np.zeros(351)
+        weight[head] = 1 / head_n
+        weight[tail] = -1 / tail_n
+        if IF_REV[fac]:
+            weight = weight * -1
+        all_weight = np.vstack([all_weight,weight])
+    return all_weight
+
+def get_trade_weights(daily_factor_weights,factor_weights,bias=0):
+    sum_weight = np.dot(daily_factor_weights.T,factor_weights)
+    sum_weight[sum_weight>0] = (1+bias) * sum_weight[sum_weight>0] / sum_weight[sum_weight>0].sum()
+    sum_weight[sum_weight<0] = (1-bias) * sum_weight[sum_weight<0] / sum_weight[sum_weight<0].sum() * -1
+    return sum_weight
+
+def update_weights_history(history_weights,r,hr):
+    new_hr = np.dot(history_weights,r)
+    hr = np.vstack([hr,new_hr])
+    # here give selection rules
+    # greatest = np.argmax(hr[-20:].mean(axis=0))
+    # new_weights = np.zeros(hr.shape[1])
+    # new_weights[greatest] = 1
+    good = np.argpartition(hr[-20:].mean(axis=0),-5)[-5:]
+    new_weights = np.zeros(hr.shape[1])
+    new_weights[good] = 1 / 5
+    return new_weights,hr

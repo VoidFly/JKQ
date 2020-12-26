@@ -115,7 +115,7 @@ while True:
             if count>=21:
                 #使用前天的factor值计算权重
                 factor_temp=pd.DataFrame(factors_lst[-3*351:-2*351],columns=dailyfactors.columns,dtype=float)
-                weights1=get_weight(factor_temp[factor_select1],head_n=10,tail_n=10)
+                weights1 = get_weight(factor_temp[factor_select1],head_n=10,tail_n=10)
                 weights2 = get_weight(factor_temp[factor_select2],head_n=10,tail_n=10)
                 weights3 = get_weight(factor_temp[factor_select3],head_n=10,tail_n=10)
             
