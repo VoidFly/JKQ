@@ -49,6 +49,8 @@ def get_factors(data,prev_factors):
     result['close']=c[-1]
     return result # stocks|day|factors....|close
 
+FACTOR_LIST = ['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi','_avg','_mom','_mom20', '_vol', '_max52', '_cci', '_K', '_D', '_J', '_rsi', '_trix', '_willr', '_macd', '_natr','_mfi']
+
 def get_factors_with_ohlcv(o,h,l,c,v):
     '''
     1*stock
@@ -80,8 +82,8 @@ def get_factors_with_ohlcv(o,h,l,c,v):
     natr = get_natr(h,l,c)
     mfi=get_mfi(c,h,l,v)
 
-    result=pd.DataFrame([avg, mom,mom20, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr,mfi],
-                index=['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi'],dtype=float).T
+    result=pd.DataFrame([avg, mom, mom20, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr, mfi,-avg, -mom, -mom20, -vol, -max52, -cci, -K, -D, -J, -rsi, -trix, -willr, -macd, -natr, -mfi],
+                index=['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi','_avg','_mom','_mom20', '_vol', '_max52', '_cci', '_K', '_D', '_J', '_rsi', '_trix', '_willr', '_macd', '_natr','_mfi'],dtype=float).T
 
     # result['day']=day
     # result['stock']=stock
@@ -183,6 +185,7 @@ def lgb_weight(factors,model,n=10,max_exposure=0.09):
 IF_REV = {
     'avg':True,
     'mom':True,
+    'mom20':True,
     'vol':False,
     'max52':True,
     'min52':True,
@@ -205,8 +208,8 @@ def get_weight(dailyfactors,head_n=10,tail_n=10):
         weight = np.zeros(351)
         weight[head] = 1 / head_n
         weight[tail] = -1 / tail_n
-        if IF_REV[fac]:
-            weight = weight * -1
+        # if IF_REV[fac]:
+        #     weight = weight * -1
         all_weight = np.vstack([all_weight,weight])
     sum_weight = all_weight.mean(axis=0)
     sum_weight[sum_weight>0] = sum_weight[sum_weight>0] / sum_weight[sum_weight>0].sum()
@@ -221,8 +224,8 @@ def get_all_weights(dailyfactors,head_n=10,tail_n=10):
         weight = np.zeros(351)
         weight[head] = 1 / head_n
         weight[tail] = -1 / tail_n
-        if IF_REV[fac]:
-            weight = weight * -1
+        # if IF_REV[fac]:
+        #     weight = weight * -1
         all_weight = np.vstack([all_weight,weight])
     return all_weight
 
@@ -239,9 +242,10 @@ def update_weights_history(history_weights,r,hr):
     # greatest = np.argmax(hr[-20:].mean(axis=0))
     # new_weights = np.zeros(hr.shape[1])
     # new_weights[greatest] = 1
-    good = np.argpartition(hr[-20:].mean(axis=0),2)[-2:]
-    bad = np.argpartition(hr[-20:].mean(axis=0),2)[:2]
+    good = np.argpartition(hr[-10:].mean(axis=0),-2)[-2:]
+    # bad = np.argpartition(hr[-20:].mean(axis=0),2)[:2]
     new_weights = np.zeros(hr.shape[1])
     new_weights[good] = 1 / 2
-    new_weights[bad] = -1 / 2
+    print(pd.Series(FACTOR_LIST).iloc[good])
+    # new_weights[bad] = -1 / 2
     return new_weights,hr
