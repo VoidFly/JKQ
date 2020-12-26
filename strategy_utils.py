@@ -257,7 +257,7 @@ def update_weights_history(history_weights,r,hr):
     # good = np.argpartition(hr[-21:].mean(axis=0),-2)[-2:]
     excess=hr[-10:].mean(axis=0)-0.01/252
     std=hr[-10:].std(axis=0)
-    good = np.argpartition(np.power(excess,3)/np.power(std,2),-2)[-2:]
+    good = np.argpartition(np.power(excess,3)/np.power(std,2),-3)[-3:]
     # bad = np.argpartition(hr[-20:].mean(axis=0),2)[:2]
     new_weights = np.zeros(hr.shape[1])
     new_weights[good] = 1 / 2
