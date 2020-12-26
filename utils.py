@@ -161,7 +161,7 @@ def get_macd(closes,fp=12,sp=26):
     ema1 = np.average(rolling_window(closes[-fp:].T,fp),axis=2,weights=w1)
     ema2 = np.average(rolling_window(closes[-sp:].T,sp),axis=2,weights=w2)
     macd = ema1 - ema2
-    return macd
+    return macd.flatten()
 
 
 def get_natr(highs,lows,closes,p=30):
@@ -202,6 +202,7 @@ def get_mfi(closes,highs,lows,volumes,p=14):
     neg_money_flow=-np.sum(down*tp[-p:]*volumes[-p:],axis=0)
 
     mfi=100-(100/(1+pos_money_flow/neg_money_flow))
+    mfi[np.isnan(mfi)] = 50
     return mfi
 
 
