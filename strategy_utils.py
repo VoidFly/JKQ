@@ -49,9 +49,9 @@ def get_factors(data,prev_factors):
     result['close']=c[-1]
     return result # stocks|day|factors....|close
 
-FACTOR_LIST = ['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi','_avg','_mom','_mom20', '_vol', '_max52', '_cci', '_K', '_D', '_J', '_rsi', '_trix', '_willr', '_macd', '_natr','_mfi']
+FACTOR_LIST = ['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi','_avg','_mom','_mom20', '_vol', '_max52', '_cci', '_K', '_D', '_J', '_rsi', '_trix', '_willr', '_macd', '_natr','_mfi','lgb','dnn']
 
-def get_factors_with_ohlcv(o,h,l,c,v):
+def get_factors_with_ohlcv(o,h,l,c,v,lgb_model=None,k_model=None):
     '''
     1*stock
     prev_factors
@@ -72,7 +72,7 @@ def get_factors_with_ohlcv(o,h,l,c,v):
     vol=get_vol(c,5)
     
     max52=get_52weekhigh(c)
-    #min52=get_52weeklow(c)
+    # min52=get_52weeklow(c)
     cci = get_cci(h,l,c)
     K,D,J = get_kdj(h,l,c)
     rsi = get_rsi(c)
@@ -82,9 +82,20 @@ def get_factors_with_ohlcv(o,h,l,c,v):
     natr = get_natr(h,l,c)
     mfi=get_mfi(c,h,l,v)
 
-    result=pd.DataFrame([avg, mom, mom20, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr, mfi,-avg, -mom, -mom20, -vol, -max52, -cci, -K, -D, -J, -rsi, -trix, -willr, -macd, -natr, -mfi],
-                index=['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi','_avg','_mom','_mom20', '_vol', '_max52', '_cci', '_K', '_D', '_J', '_rsi', '_trix', '_willr', '_macd', '_natr','_mfi'],dtype=float).T
+    if lgb_model is not None:
+        lgb_input = np.asarray([avg, mom, vol, max52, cci, K, D, J, rsi,trix, willr, macd, natr, mfi]).T
+        lgb_pred = lgb_model.predict(lgb_input).flatten()
+    if k_model is not None:
+        k_input = np.asarray([mom, max52, cci, K, D, J, rsi, trix, willr]).T
+        k_pred = k_model.predict(k_input).flatten()
 
+    try:
+        result=pd.DataFrame([avg, mom, mom20, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr, mfi,-avg, -mom, -mom20, -vol, -max52, -cci, -K, -D, -J, -rsi, -trix, -willr, -macd, -natr, -mfi,lgb_pred,k_pred],
+                    index=['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi','_avg','_mom','_mom20', '_vol', '_max52', '_cci', '_K', '_D', '_J', '_rsi', '_trix', '_willr', '_macd', '_natr','_mfi','lgb','dnn'],dtype=float).T
+    except Exception as e:
+        print(e)
+        result=pd.DataFrame([avg, mom, mom20, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr, mfi,-avg, -mom, -mom20, -vol, -max52, -cci, -K, -D, -J, -rsi, -trix, -willr, -macd, -natr, -mfi],
+                    index=['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi','_avg','_mom','_mom20', '_vol', '_max52', '_cci', '_K', '_D', '_J', '_rsi', '_trix', '_willr', '_macd', '_natr','_mfi'],dtype=float).T
     # result['day']=day
     # result['stock']=stock
     # result['close']=c[-1]
@@ -231,8 +242,9 @@ def get_all_weights(dailyfactors,head_n=10,tail_n=10):
 
 def get_trade_weights(daily_factor_weights,factor_weights,bias=0):
     sum_weight = np.dot(daily_factor_weights.T,factor_weights)
-    sum_weight[sum_weight>0] = (1+bias) * sum_weight[sum_weight>0] / sum_weight[sum_weight>0].sum()
-    sum_weight[sum_weight<0] = (1-bias) * sum_weight[sum_weight<0] / sum_weight[sum_weight<0].sum() * -1
+    sum_weight[sum_weight>0] = (1+bias) * 0.5 * sum_weight[sum_weight>0] / sum_weight[sum_weight>0].sum()
+    sum_weight[sum_weight<0] = (1-bias) * 0.5 * sum_weight[sum_weight<0] / sum_weight[sum_weight<0].sum() * -1
+    print(sum_weight[sum_weight>0].sum(),sum_weight[sum_weight<0].sum())
     return sum_weight
 
 def update_weights_history(history_weights,r,hr):
@@ -242,10 +254,11 @@ def update_weights_history(history_weights,r,hr):
     # greatest = np.argmax(hr[-20:].mean(axis=0))
     # new_weights = np.zeros(hr.shape[1])
     # new_weights[greatest] = 1
-    good = np.argpartition(hr[-10:].mean(axis=0),-2)[-2:]
+    good = np.argpartition(hr[-21:].mean(axis=0),-2)[-2:]
     # bad = np.argpartition(hr[-20:].mean(axis=0),2)[:2]
     new_weights = np.zeros(hr.shape[1])
     new_weights[good] = 1 / 2
+    print(hr[-21:].mean(axis=0)[good])
     print(pd.Series(FACTOR_LIST).iloc[good])
     # new_weights[bad] = -1 / 2
     return new_weights,hr
