@@ -66,7 +66,7 @@ while True:
         data_lst.extend(dailystk)
 
         if count>10:#开始不动，只要有新数据就跑一次策略
-            print('run strategy')
+            print('run strategy',factor_select)
             df=pd.DataFrame(data_lst,columns=['day','stock','open','high','low','close','volume'],
                             dtype=float).set_index(['day','stock'])
             
@@ -124,10 +124,10 @@ while True:
                 returns=np.array([np.dot(weights1,dayreturn),np.dot(weights2,dayreturn),np.dot(weights3,dayreturn)])
                 all_return.append(returns)
                 
-                if count%63==0:
+                if count%42==0:
                     select_mean=np.array(all_return[-126:]).mean(axis=0)
                     factor_select=allselects[np.argmax(select_mean)]
-                    print('修改策略为过去126天中跑的最好的:"+str(factor_select)')
+                    print('修改策略为过去126天中跑的最好的:'+str(factor_select))
                 
         i=question_response.sequence+1
         count+=1
