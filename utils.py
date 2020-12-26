@@ -9,26 +9,38 @@ def rolling_window(data, window):
     return np.lib.stride_tricks.as_strided(data, shape=shape, strides=strides)
 
 def get_avg(closes,t):
+    if closes.shape[0] < t:
+        return np.zeros(closes.shape[1])
     avg = closes[-t:].mean(axis=0)
     return avg
 # 动量
 def get_mom(closes,t):
+    if closes.shape[0] < t+1:
+        return np.zeros(closes.shape[1])
     mom = (closes[-t:] / closes[-t-1:-1]).mean(axis=0)
     return mom
 
 # 波动率
 def get_vol(closes,t):
+    if closes.shape[0] < t+1:
+        return np.zeros(closes.shape[1])
     vol = (closes[-t:] / closes[-t-1:-1]).std(axis=0)
     return vol
 
 # 52周最高
 def get_52weekhigh(closes):
-    high=closes[-252:].max(axis=0)
+    if closes.shape[0] < 252:
+        high=closes.max(axis=0)
+    else:
+        high=closes[-252:].max(axis=0)
     return (closes[-1]-high)/high
 
 # 52周最低
 def get_52weeklow(closes):
-    low=closes[-252:].min(axis=0)
+    if closes.shape[0] < 252:
+        low=closes.min(axis=0)
+    else:
+        low=closes[-252:].min(axis=0)
     return (closes[-1]-low)/low
 
 # 价量相关性
