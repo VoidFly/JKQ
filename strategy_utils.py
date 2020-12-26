@@ -63,39 +63,39 @@ def select_factors(factors,n=10,period=5):
     
     return factor_select
 
-def get_weight(factors,n=10,max_exposure=0.1,index_direction='neutral'):
+# def get_weight(factors,n=10,max_exposure=0.1,index_direction='neutral'):
 
-    factors=factors.set_index('stock')
-    head=[]
-    tail=[]
+#     factors=factors.set_index('stock')
+#     head=[]
+#     tail=[]
     
-    #简单取并集/或交集
-    for col in factors.columns:
-        head.extend(factors[col].nlargest(n).index.tolist())
-        tail.extend(factors[col].nsmallest(n).index.tolist())
-    head=list(set(head))
-    tail=list(set(tail))
+#     #简单取并集/或交集
+#     for col in factors.columns:
+#         head.extend(factors[col].nlargest(n).index.tolist())
+#         tail.extend(factors[col].nsmallest(n).index.tolist())
+#     head=list(set(head))
+#     tail=list(set(tail))
 
-    intersect=np.intersect1d(head,tail)
-    head=np.setdiff1d(head,intersect)
-    tail=np.setdiff1d(tail,intersect)
-    #print('head num',len(head))
-    #print('tail num',len(tail))
+#     intersect=np.intersect1d(head,tail)
+#     head=np.setdiff1d(head,intersect)
+#     tail=np.setdiff1d(tail,intersect)
+#     #print('head num',len(head))
+#     #print('tail num',len(tail))
 
-    #根据大盘调整仓位占比
-    weight=pd.Series(0,index=factors.index)
-    if index_direction=='up':
-        weight[head]=((1+max_exposure)/2)/len(head)
-        weight[tail]=-((1-max_exposure)/2)/len(tail)
-    elif index_direction=='down':
-        weight[head]=((1-max_exposure)/2)/len(head)
-        weight[tail]=-((1+max_exposure)/2)/len(tail)
-    else:
-        weight[head]=0.5/(len(head))
-        weight[tail]=-0.5/(len(tail))
+#     #根据大盘调整仓位占比
+#     weight=pd.Series(0,index=factors.index)
+#     if index_direction=='up':
+#         weight[head]=((1+max_exposure)/2)/len(head)
+#         weight[tail]=-((1-max_exposure)/2)/len(tail)
+#     elif index_direction=='down':
+#         weight[head]=((1-max_exposure)/2)/len(head)
+#         weight[tail]=-((1+max_exposure)/2)/len(tail)
+#     else:
+#         weight[head]=0.5/(len(head))
+#         weight[tail]=-0.5/(len(tail))
 
-    #print('weight',sum(weight))
-    return weight
+#     #print('weight',sum(weight))
+#     return weight
 
 def get_position(weights,dailystk,prev_pos,
                 prev_capital,comission):
