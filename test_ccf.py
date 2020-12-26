@@ -48,8 +48,8 @@ all_return=[]
 
 
 factor_select1=['avg', 'mom', 'max52', 'D', 'willr', 'natr', 'rsi']
-factor_select2=['avg', 'mom']
-factor_select3=['avg',  'natr', 'rsi']
+factor_select2=['mom']
+factor_select3=['mom', 'max52','D']
 
 weights1=np.array([1/351]*351)
 weights2=np.array([1/351]*351)
@@ -116,14 +116,17 @@ while True:
                 print('修改策略为过去126天中跑的最好的:"+str(factor_select)')
             
             #构建策略二、三的权重
+            
+             #使用前天的factor值计算权重
+            factor_temp=pd.Series(factors_lst[-3*351:-2*351],columns=dailyfactors.columns)
+            weights1=get_weight(factor_temp[factor_select1],head_n=10,tail_n=10)
+            weights2 = get_weight(factor_temp[factor_select2],head_n=10,tail_n=10)
+            weights3 = get_weight(factor_temp[factor_select3],head_n=10,tail_n=10)
+            
+            #使用今天的收益率
             dayreturn=np.array(np.log(df['close'].iloc[-351:]))-np.array(np.log(df['close'].iloc[-702:-351]))
             returns=np.array([np.dot(weights1,dayreturn),np.dot(weights2,dayreturn),np.dot(weights3,dayreturn)])
             all_return.append(returns)
-            
-            weights1=weights.copy()
-            weights2 = get_weight(dailyfactors[factor_select2],head_n=10,tail_n=10)
-            weights3 = get_weight(dailyfactors[factor_select3],head_n=10,tail_n=10)
-            
                 
         i=question_response.sequence+1
         count+=1
