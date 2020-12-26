@@ -225,33 +225,33 @@ while True:
             # weights=get_weight(dailyfactors[factor_select+['stock']],
                             # n=10,max_exposure=0.1,index_direction=index_direction)  #取出本期选出因子的因子值
                             
-            weights = dnn_weight(dailyfactors[factor_select+['stock']],model)
+            # weights = dnn_weight(dailyfactors[factor_select+['stock']],model)
             
-            if count < 100:
-                target_pos=get_position(weights,
-                                        pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
-                                        question_response.positions,
-                                        question_response.capital / 2,
-                                        comission)
-            else:
-                target_pos=get_position(weights,
-                                        pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
-                                        question_response.positions,
-                                        question_response.capital,
-                                        comission)
+            # if count < 100:
+            #     target_pos=get_position(weights,
+            #                             pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
+            #                             question_response.positions,
+            #                             question_response.capital / 2,
+            #                             comission)
+            # else:
+            #     target_pos=get_position(weights,
+            #                             pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
+            #                             question_response.positions,
+            #                             question_response.capital,
+            #                             comission)
             
-            #提交策略
-            if count%period==0:#按周期提交
-                ##summit answer
-                submit_response = contest_stub.submit_answer(contest_pb2.AnswerRequest(user_id=88,user_pin='dDTSvdwk',session_key=login_response.session_key,sequence=i,positions=target_pos))
+            # #提交策略
+            # if count%period==0:#按周期提交
+            #     ##summit answer
+            #     submit_response = contest_stub.submit_answer(contest_pb2.AnswerRequest(user_id=88,user_pin='dDTSvdwk',session_key=login_response.session_key,sequence=i,positions=target_pos))
 
-                print(submit_response,question_response.capital)
-                if not submit_response.accepted:
-                    print(submit_response.reason)
-                    if submit_response.reason[-7:] == 'timeout':
-                        i=question_response.sequence+1
-                        count+=1
-                        continue#如果提交超时，直接请求新数据
+            #     print(submit_response,question_response.capital)
+            #     if not submit_response.accepted:
+            #         print(submit_response.reason)
+            #         if submit_response.reason[-7:] == 'timeout':
+            #             i=question_response.sequence+1
+            #             count+=1
+            #             continue#如果提交超时，直接请求新数据
 
         i=question_response.sequence+1
         count+=1

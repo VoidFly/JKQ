@@ -124,6 +124,23 @@ def dnn_weight(factors,model,n=10,max_exposure=0.09):
     weight[tail]=-((1-max_exposure)/2)/len(tail)
     return weight
 
+def lgb_weight(factors,model,n=10,max_exposure=0.09):
+    '''
+    model = joblib.load('./lgb_model.pkl')
+    '''
+
+    factors=factors.set_index('stock')
+    # pred = model.pred(factors.values)
+    pred = pd.Series(model.predict(factors.values),index=factors.index)
+    head = pred.nlargest(n).index.tolist()
+    tail = pred.nsmallest(n).index.tolist()
+    weight=pd.Series(0,index=factors.index)
+    # weight[head]=0.5/(len(head))
+    # weight[tail]=-0.5/(len(tail))
+    weight[head]=((1+max_exposure)/2)/len(head)
+    weight[tail]=-((1-max_exposure)/2)/len(tail)
+    return weight
+
 IF_REV = {
     'avg':True,
     'mom':True,
