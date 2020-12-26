@@ -4,6 +4,7 @@ Created on Sat Dec 26 00:46:56 2020
 
 @author: 轩尘
 """
+#%%
 import numpy as np
 import pandas as pd
 
@@ -101,3 +102,4 @@ price.columns=['date','asset','adjclose']
 weight=price[['date','asset']].copy()
 weight['weight']=1/500
 result=backtest(weight,price,bench_code='000905.SH')
+# %%

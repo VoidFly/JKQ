@@ -1,3 +1,4 @@
+#%%
 #import talib 
 import numpy as np
 
@@ -100,10 +101,10 @@ def get_rsi(closes,p=14):
     if closes.shape[0] < p+1:
         return np.zeros(closes.shape[1])
     pct = closes[-p:] / closes[-p-1:-1] - 1
-    up = pct 
+    up = pct.copy() 
     up[up<0] = np.nan 
     up = np.nanmean(up,axis=0)
-    down = pct 
+    down = pct.copy() 
     down[down>0] = np.nan 
     down = -np.nanmean(down,axis=0)
     rsi = 100 - (100 / (1 + up/down))
@@ -161,6 +162,7 @@ def get_natr(highs,lows,closes,p=30):
     natr = np.mean(tr,axis=0) / closes[-1]
     return natr
 
+#deprecated
 def get_obv(closes,volumes,prev_factor=None):
     '''
     prev_factor: 1D-array, span the stock space
@@ -172,7 +174,6 @@ def get_obv(closes,volumes,prev_factor=None):
     return obv
 
 #Money Flow Index
-#好像有点问题
 def get_mfi(closes,highs,lows,volumes,p=14):
     if closes.shape[0] < p+1:
         return np.zeros(closes.shape[1])
@@ -180,13 +181,24 @@ def get_mfi(closes,highs,lows,volumes,p=14):
     l = lows[-p-1:]
     c = closes[-p-1:]
     tp = (h + l + c) / 3
-    pct = np.sign(tp[-p:] / tp[-p-1:-1] - 1)
-    up = pct 
+    sign = np.sign(tp[-p:] / tp[-p-1:-1] - 1)
+    up = sign.copy()#否则是指针
     up[up<0] = 0
     pos_money_flow=np.sum(up*tp[-p:]*volumes[-p:],axis=0)
-    down = pct 
+    down = sign.copy()
     down[down>0] = 0
-    neg_money_flow=np.sum(down*tp[-p:]*volumes[-p:],axis=0)
+    neg_money_flow=-np.sum(down*tp[-p:]*volumes[-p:],axis=0)
 
     mfi=100-(100/(1+pos_money_flow/neg_money_flow))
     return mfi
+
+
+# #%%
+# import pandas as pd
+# df=pd.read_csv('./data/CONTEST_DATA_IN_SAMPLE_1.csv',header=None)
+# df.columns=['days','asset','open','high','low','close','volume']
+# df=df.set_index(['days','asset'])
+# df1=df.loc[[i for i in range(15)]]
+# t=get_mfi(df1['close'].unstack().values,df1['high'].unstack().values,df1['low'].unstack().values,df1['volume'].unstack().values)
+# t
+# # %%
