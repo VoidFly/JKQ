@@ -66,6 +66,7 @@ def get_factors_with_ohlcv(o,h,l,c,v):
 
     avg=get_avg(c,3)
     mom=get_mom(c,5)
+    mom20=get_mom(c,20)
     vol=get_vol(c,5)
     
     max52=get_52weekhigh(c)
@@ -79,8 +80,8 @@ def get_factors_with_ohlcv(o,h,l,c,v):
     natr = get_natr(h,l,c)
     mfi=get_mfi(c,h,l,v)
 
-    result=pd.DataFrame([avg, mom, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr,mfi],
-                index=['avg','mom', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi'],dtype=float).T
+    result=pd.DataFrame([avg, mom,mom20, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr,mfi],
+                index=['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi'],dtype=float).T
 
     # result['day']=day
     # result['stock']=stock
@@ -238,7 +239,9 @@ def update_weights_history(history_weights,r,hr):
     # greatest = np.argmax(hr[-20:].mean(axis=0))
     # new_weights = np.zeros(hr.shape[1])
     # new_weights[greatest] = 1
-    good = np.argpartition(hr[-20:].mean(axis=0),-5)[-5:]
+    good = np.argpartition(hr[-20:].mean(axis=0),2)[-2:]
+    bad = np.argpartition(hr[-20:].mean(axis=0),2)[:2]
     new_weights = np.zeros(hr.shape[1])
-    new_weights[good] = 1 / 5
+    new_weights[good] = 1 / 2
+    new_weights[bad] = -1 / 2
     return new_weights,hr

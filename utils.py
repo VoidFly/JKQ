@@ -120,6 +120,7 @@ def get_rsi(closes,p=14):
     down[down>0] = np.nan 
     down = -np.nanmean(down,axis=0)
     rsi = 100 - (100 / (1 + up/down))
+    rsi[np.isnan(rsi)] = 50
     return rsi
 
 
