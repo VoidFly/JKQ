@@ -4,7 +4,6 @@ Created on Sat Dec 26 00:46:56 2020
 
 @author: 轩尘
 """
-#%%
 import numpy as np
 import pandas as pd
 
@@ -47,7 +46,8 @@ def portevaluation(df):
     result.loc['Time length']=len(df)
     return result
 
-def backtest(weights,price,bench_code='000905.SH'):
+def backtest(weight,price,bench_code='000905.SH'):
+    weights=convert_weight(weight)
     weights=weights.set_index(['date','asset'])
     baseinfor =portbaseinfor(weights)
     adjclose = price.pivot(index='date',columns='asset',values='adjclose')
@@ -91,9 +91,14 @@ def backtest(weights,price,bench_code='000905.SH'):
     downresult = portevaluation(Ret[Ret['BenchRet']<=0])
     Result['BullAssess'] = upresult
     Result['BearAssess'] = downresult
-    Result['baseinfor'] = baseinfor
     
     return Result
+
+def convert_weight(weight):
+    w=weight.set_index(['date','asset'])['weight'].unstack()
+    w=w.reindex(np.arange(w.index[0],w.index[-1]+1))
+    w=w.ffill()
+    return w.stack().rename('weight').reset_index()
 
 #%%
 price=pd.read_csv('./data/sample_data.csv',encoding='gbk')
@@ -101,5 +106,5 @@ price = price[['天数','股票代码','收盘价']]
 price.columns=['date','asset','adjclose']
 weight=price[['date','asset']].copy()
 weight['weight']=1/500
+weight=weight.drop(np.arange(600,1000))
 result=backtest(weight,price,bench_code='000905.SH')
-# %%
