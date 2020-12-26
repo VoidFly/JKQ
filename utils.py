@@ -97,7 +97,7 @@ def get_rsi(closes,p=14):
     Return:
         cci: Commodity Channel Index of all stocks as a 1D-array
     '''
-    if closes.shape[0] < p:
+    if closes.shape[0] < p+1:
         return np.zeros(closes.shape[1])
     pct = closes[-p:] / closes[-p-1:-1] - 1
     up = pct 
@@ -105,7 +105,7 @@ def get_rsi(closes,p=14):
     up = np.nanmean(up,axis=0)
     down = pct 
     down[down>0] = np.nan 
-    down = np.nanmean(down,axis=0)
+    down = -np.nanmean(down,axis=0)
     rsi = 100 - (100 / (1 + up/down))
     return rsi
 
@@ -152,7 +152,7 @@ def get_macd(closes,fp=12,sp=26):
 
 
 def get_natr(highs,lows,closes,p=30):
-    if closes.shape[0] < p:
+    if closes.shape[0] < p+1:
         return np.zeros(closes.shape[1])
     hl = highs[-p:] - lows[-p:]
     hcp = np.abs(highs[-p:] - closes[-p-1:-1])
@@ -161,4 +161,32 @@ def get_natr(highs,lows,closes,p=30):
     natr = np.mean(tr,axis=0) / closes[-1]
     return natr
 
+def get_obv(closes,volumes,prev_factor=None):
+    '''
+    prev_factor: 1D-array, span the stock space
+    '''
+    if prev_factor is None:
+        obv=np.sign(closes[-1]-closes[-2])*volumes[-1]
+    else:
+        obv=prev_factor+np.sign(closes[-1]-closes[-2])*volumes[-1]
+    return obv
 
+#Money Flow Index
+#好像有点问题
+def get_mfi(closes,highs,lows,volumes,p=14):
+    if closes.shape[0] < p+1:
+        return np.zeros(closes.shape[1])
+    h = highs[-p-1:]
+    l = lows[-p-1:]
+    c = closes[-p-1:]
+    tp = (h + l + c) / 3
+    pct = np.sign(tp[-p:] / tp[-p-1:-1] - 1)
+    up = pct 
+    up[up<0] = 0
+    pos_money_flow=np.sum(up*tp[-p:]*volumes[-p:],axis=0)
+    down = pct 
+    down[down>0] = 0
+    neg_money_flow=np.sum(down*tp[-p:]*volumes[-p:],axis=0)
+
+    mfi=100-(100/(1+pos_money_flow/neg_money_flow))
+    return mfi
