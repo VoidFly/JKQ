@@ -12,6 +12,21 @@ import time
 from utils import *
 from strategy_utils import *
 
+import lightgbm as lgb
+import joblib
+
+import keras
+from keras.models import load_model
+
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+set_session(tf.Session(config=config))
+
+lgb_model = joblib.load('./lgb_model.pkl')
+k_model = load_model('dnn_overfit2.h5')
+
 contest_channel=grpc.insecure_channel('47.103.23.116: 56702')
 question_channel=grpc.insecure_channel('47.103.23.116: 56701')
 
@@ -23,7 +38,7 @@ login_response=contest_stub.login(contest_pb2.LoginRequest(user_id=88,user_pin='
 session_key=login_response.session_key
 init_capital=login_response.init_capital
 
-df = pd.read_csv('./data/saved_data.csv',dtype=float).set_index(['day','stock'])
+df = pd.read_csv('./data/saved_data.csv',index_col=0,dtype=float).set_index(['day','stock'])
 o = df['open'].unstack(level=1).values
 h = df['high'].unstack(level=1).values
 l = df['low'].unstack(level=1).values
@@ -31,14 +46,14 @@ c = df['close'].unstack(level=1).values
 v = df['volume'].unstack(level=1).values
 r = df['close'].unstack(level=1).pct_change().values
 
-dailyfactors = get_factors_with_ohlcv(o,h,l,c,v)
+dailyfactors = get_factors_with_ohlcv(o,h,l,c,v,lgb_model,k_model)
 
 history_weights = np.empty((0,dailyfactors.shape[1],dailyfactors.shape[0]))
 for j in range(52,0,-1):
-    dailyfactors = get_factors_with_ohlcv(o[-j-252:-j],h[-j-252:-j],l[-j-252:-j],c[-j-252:-j],v[-j-252:-j])
+    dailyfactors = get_factors_with_ohlcv(o[-j-252:-j],h[-j-252:-j],l[-j-252:-j],c[-j-252:-j],v[-j-252:-j],lgb_model,k_model)
     daily_factor_weights = get_all_weights(dailyfactors,head_n=10,tail_n=10)
     history_weights = np.vstack([history_weights,daily_factor_weights.reshape((1,daily_factor_weights.shape[0],daily_factor_weights.shape[1]))])
-dailyfactors = get_factors_with_ohlcv(o[-252:],h[-252:],l[-252:],c[-252:],v[-252:])
+dailyfactors = get_factors_with_ohlcv(o[-252:],h[-252:],l[-252:],c[-252:],v[-252:],lgb_model,k_model)
 daily_factor_weights = get_all_weights(dailyfactors,head_n=10,tail_n=10)
 history_weights = np.vstack([history_weights,daily_factor_weights.reshape((1,daily_factor_weights.shape[0],daily_factor_weights.shape[1]))])
 
@@ -58,7 +73,8 @@ lending_rate=0.01#
 borrow_rate=0.05#
 leverage=2#
 # factors=pd.DataFrame()
-prev_factors=pd.DataFrame()#上一次计算的factors
+# prev_factors=pd.DataFrame()#上一次计算的factors
+bias = 0
 
 while True:
     login_response=contest_stub.login(contest_pb2.LoginRequest(user_id=88,user_pin='dDTSvdwk'))
@@ -87,12 +103,12 @@ while True:
                     
                     # dailyfactors=get_factors(df,prev_factors)  #从数据获取因子
 
-                    dailyfactors = get_factors_with_ohlcv(o,h,l,c,v)
+                    dailyfactors = get_factors_with_ohlcv(o,h,l,c,v,lgb_model,k_model)
                     # prev_factors=dailyfactors
 
                     daily_factor_weights = get_all_weights(dailyfactors,head_n=10,tail_n=10) # shape: 351 * factors#
 
-                    daily_trade_weights = get_trade_weights(daily_factor_weights,factor_weights,bias=0) # shape: 351 * 1
+                    daily_trade_weights = get_trade_weights(daily_factor_weights,factor_weights,bias=bias) # shape: 351 * 1
 
 
                     # factors_lst.extend(dailyfactors.values)#向因子库追加
@@ -106,7 +122,7 @@ while True:
                     # index_direction='neutral'#TODO 大盘方向，用于控制exposure
 
                     # weights = get_weight(dailyfactors[factor_select],head_n=10,tail_n=10)
-                    if count < 50:
+                    if count < 10:
                         target_pos=get_position(daily_trade_weights,
                                                 pd.DataFrame(dailystk,columns=['day','stock','open','high','low','close','volume'],dtype=float),#只需要close，待优化
                                                 question_response.positions,
@@ -133,6 +149,10 @@ while True:
                                 continue#如果提交超时，直接请求新数据
                     history_weights = np.vstack([history_weights,daily_factor_weights.reshape((1,daily_factor_weights.shape[0],daily_factor_weights.shape[1]))])
                     pctchg = c[-1,:] / c[-2,:] - 1
+                    if np.mean(pctchg)>0:
+                        bias = -0.01
+                    else:
+                        bias = 0.03
                     r = np.vstack([r,pctchg])
                     factor_weights,hr = update_weights_history(history_weights[-2],pctchg,hr)
                     data_lst.extend(dailystk)

@@ -92,6 +92,7 @@ def get_factors_with_ohlcv(o,h,l,c,v,lgb_model=None,k_model=None):
     try:
         result=pd.DataFrame([avg, mom, mom20, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr, mfi,-avg, -mom, -mom20, -vol, -max52, -cci, -K, -D, -J, -rsi, -trix, -willr, -macd, -natr, -mfi,lgb_pred,k_pred],
                     index=['avg','mom','mom20', 'vol', 'max52', 'cci', 'K', 'D', 'J', 'rsi', 'trix', 'willr', 'macd', 'natr','mfi','_avg','_mom','_mom20', '_vol', '_max52', '_cci', '_K', '_D', '_J', '_rsi', '_trix', '_willr', '_macd', '_natr','_mfi','lgb','dnn'],dtype=float).T
+        # result=pd.DataFrame([lgb_pred,k_pred],index=['lgb','dnn'],dtype=float).T
     except Exception as e:
         print(e)
         result=pd.DataFrame([avg, mom, mom20, vol, max52, cci, K, D, J, rsi, trix, willr, macd, natr, mfi,-avg, -mom, -mom20, -vol, -max52, -cci, -K, -D, -J, -rsi, -trix, -willr, -macd, -natr, -mfi],
@@ -255,13 +256,26 @@ def update_weights_history(history_weights,r,hr):
     # new_weights = np.zeros(hr.shape[1])
     # new_weights[greatest] = 1
     # good = np.argpartition(hr[-21:].mean(axis=0),-2)[-2:]
-    excess=hr[-10:].mean(axis=0)-0.01/252
-    std=hr[-10:].std(axis=0)
-    good = np.argpartition(np.power(excess,3)/np.power(std,2),-3)[-3:]
+    # excess=hr[-5:].mean(axis=0)-0.01/252
+    # std=hr[-5:].std(axis=0)
+    # ir = np.power(excess,3)/np.power(std,2)
+    # good = np.argpartition(np.power(excess,3)/np.power(std,2),-1)[-1:]
     # bad = np.argpartition(hr[-20:].mean(axis=0),2)[:2]
-    new_weights = np.zeros(hr.shape[1])
-    new_weights[good] = 1 / 2
-    print(hr[-10:].mean(axis=0)[good])
-    print(pd.Series(FACTOR_LIST).iloc[good])
+    new_weights = np.ones(hr.shape[1]) / 9
+    new_weights[14:]=0
+    new_weights[[2,5,10,11,31]]=0
+    # new_weights[1] = 1
+    # # new_weights[2] = 1 / 3
+    # # new_weights[-2:] = 1 / 3\
+    # good = [1]
+    # # inner_w = ir[good] * 100
+    # bad = [2]
+    # new_weights[good] = ir[good] * 100
+    # new_weights[bad] = ir[bad] * 100 
+    # print(ir[good] * 100,ir[bad] * 100)
+    # new_weights[:15] = ir[:15]
+    # print(ir[1])
+    # print(hr[-10:].mean(axis=0)[good])
+    # print(pd.Series(FACTOR_LIST).iloc[good])
     # new_weights[bad] = -1 / 2
     return new_weights,hr
